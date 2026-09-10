@@ -109,19 +109,40 @@ const UI = {
   verdictFailureText: 'Team {team} accused {culprit}, with {weapon}, in the {room}. The chief detective is not convinced.',
   solutionWas: 'The truth: {culprit}, with {weapon}, in the {room}.',
   finalTime: 'Final time',
+  // Envoi du résultat au maître du jeu : copie du code, envoyé sur Slack
   codeTitle: 'Your result code',
-  codeHelp: 'Give this code to the game master. It encodes your team name, your time and your verdict.',
+  codeHelp: 'Copy this code and send it to Benjamin on Slack so your result counts in the final ranking. It encodes your team name, your crest, your time and your verdict.',
   copy: 'Copy the code',
-  copied: 'Copied to the clipboard.',
+  copied: 'Copied. Now send it to Benjamin on Slack.',
   copyFailed: 'Copy failed. Select the code and copy it by hand.',
+  copyHeader: 'Copy',
+  copyRow: 'Copy the result code of team {team}',
   boardTitle: 'Investigations on this device',
-  boardNote: 'There is no shared leaderboard: this ranking only lists the games played on this device.',
+  boardNote: 'This ranking only lists the games played on this device. The game master holds the final ranking.',
   boardRank: '#',
   boardTeam: 'Team',
   boardTime: 'Time',
   boardVerdict: 'Verdict',
   boardSolved: 'Solved',
   boardFailed: 'Wrong',
+  // Classement final du maître du jeu (écran #board)
+  finalKicker: 'Game master',
+  finalTitle: 'Final ranking',
+  finalEmpty: 'No result yet. The ranking fills in as the teams send their results.',
+  finalCount: '{n} teams ranked',
+  finalCountOne: '1 team ranked',
+  addCodeLabel: 'Add a result code',
+  addCodePlaceholder: 'Paste a result code or link',
+  addCode: 'Add',
+  addCodeInvalid: 'This is not a valid result code.',
+  addCodeDuplicate: 'This result is already in the ranking.',
+  addCodeAdded: 'Team {team} added to the ranking.',
+  removeHeader: 'Remove',
+  removeRow: 'Remove team {team} from the ranking',
+  clearBoard: 'Clear the ranking',
+  clearBoardConfirm: 'Remove every result from this ranking?',
+  backHome: 'Back to the château',
+  gameMasterLink: 'Game master: final ranking',
   newGame: 'Start a new investigation',
   skip: 'Skip to content',
   noscript: 'This investigation needs JavaScript to run.',
@@ -330,6 +351,9 @@ html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
 body {
   margin: 0;
   min-height: 100dvh;
+  /* Supprime le zoom au double-tap ; le glissement et le pincement restent actifs
+     (le plan agrandi s'explore toujours au doigt). */
+  touch-action: manipulation;
   background-color: var(--bg);
   background-image:
     radial-gradient(ellipse 90% 50% at 50% -10%, rgba(176,141,76,.14), transparent 70%),
@@ -359,7 +383,7 @@ noscript p { margin: 24px; padding: 16px; background: var(--wine); color: var(--
 /* ---------- Structure ---------- */
 .layout { width: 100%; }
 .main { width: 100%; max-width: 720px; margin: 0 auto; padding: 16px 16px calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 28px); }
-body[data-screen="home"] .main { padding-bottom: 40px; }
+body[data-screen="home"] .main, body[data-screen="board"] .main { padding-bottom: 40px; }
 
 /* ---------- Barre haute : blason, équipe, chrono ---------- */
 .topbar {
@@ -718,13 +742,37 @@ select.input { appearance: auto; -webkit-appearance: menulist; padding-right: 36
 .verdict-pill--ko { color: #d98a8a; }
 .result-actions { margin-top: 24px; }
 .home-board { margin-top: 30px; }
+.home-foot { margin: 34px 0 0; text-align: center; font-size: .78rem; letter-spacing: .06em; }
+.home-foot a { color: rgba(232,223,200,.55); text-decoration: underline; text-underline-offset: 3px; }
+.home-foot a:hover { color: var(--brass-light); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ---------- Envoi au maître du jeu (écran de résultat) ---------- */
+
+/* ---------- Classement final (écran du maître du jeu, #board) ---------- */
+.board--final { margin-top: 18px; }
+.board__count { margin: 0 0 8px; font-family: var(--font-title); font-style: italic; color: var(--brass-light); }
+.board__empty { margin: 18px 0; padding: 18px; text-align: center; font-family: var(--font-title); font-style: italic; color: rgba(232,223,200,.75); border: 1px dashed rgba(176,141,76,.5); }
+.board tr.is-podium td.num { color: var(--brass-light); font-weight: 700; }
+.board tr.is-rank-1 td { font-weight: 700; color: var(--brass-light); background: rgba(176,141,76,.10); }
+.board tr.is-rank-1 td:first-child { box-shadow: inset 3px 0 0 var(--brass); }
+.board__crown { width: 14px; height: 14px; margin-right: 4px; vertical-align: -2px; fill: var(--brass-light); }
+.board td.act { width: 1%; padding-right: 0; text-align: right; }
+.iconbtn { display: inline-grid; place-items: center; width: 36px; height: 36px; padding: 0; background: transparent; color: rgba(232,223,200,.6); border: 1px solid transparent; border-radius: 2px; font-size: 1rem; line-height: 1; cursor: pointer; }
+.iconbtn:hover { color: var(--paper); border-color: rgba(176,141,76,.5); }
+.addcode { margin-top: 26px; padding-bottom: 8px; }
+.addcode .feedback { margin-bottom: 0; }
+.addcode__row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
+.addcode .input { font-size: .95rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.board-actions { display: grid; gap: 10px; margin-top: 22px; }
+.btn[disabled] { opacity: .45; cursor: not-allowed; pointer-events: none; }
 
 /* ---------- Grand écran : dossier à gauche, carnet à droite ---------- */
 @media (min-width: 1024px) {
   .layout { display: grid; grid-template-columns: minmax(0, 1fr) 460px; gap: 32px; align-items: start; max-width: 1200px; margin: 0 auto; padding: 24px 24px 48px; }
   .main { max-width: none; padding: 0; }
-  body[data-screen="home"] .layout { grid-template-columns: minmax(0, 720px); justify-content: center; }
-  body[data-screen="home"] .notebook { display: none; }
+  body[data-screen="home"] .layout, body[data-screen="board"] .layout { grid-template-columns: minmax(0, 720px); justify-content: center; }
+  body[data-screen="home"] .notebook, body[data-screen="board"] .notebook { display: none; }
   .notebook {
     display: block; position: sticky; inset: auto; top: calc(var(--topbar-h) + 24px);
     max-height: calc(100dvh - var(--topbar-h) - 48px); overflow: auto;
@@ -739,7 +787,7 @@ select.input { appearance: auto; -webkit-appearance: menulist; padding-right: 36
   .cards { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 }
 @media print {
-  .topbar, .tabbar, .btn { display: none !important; }
+  .topbar, .tabbar, .btn, .addcode, .iconbtn, .board-actions, .home-foot { display: none !important; }
   body { background: #fff; color: #000; }
 }
 </style>
@@ -820,6 +868,9 @@ select.input { appearance: auto; -webkit-appearance: menulist; padding-right: 36
         <p class="board__note" data-ui="boardNote"></p>
         <div id="home-board-table"></div>
       </section>
+
+      <!-- Accès discret du maître du jeu au classement final -->
+      <p class="home-foot"><a href="#board" data-ui="gameMasterLink"></a></p>
     </section>
 
     <!-- Fiche de salle (rendue par JS) -->
@@ -830,6 +881,9 @@ select.input { appearance: auto; -webkit-appearance: menulist; padding-right: 36
 
     <!-- Résultat et classement local (rendus par JS) -->
     <section id="screen-result" class="screen" hidden></section>
+
+    <!-- Classement final du maître du jeu, hors partie (rendu par JS, route #board) -->
+    <section id="screen-board" class="screen" hidden></section>
   </main>
 
   <!-- Carnet du détective : indices récoltés + 21 cartes à barrer -->
@@ -902,6 +956,7 @@ const KEY = {
   progress: CONFIG.storagePrefix + 'progress',   // { team, crest, startedAt, finishedAt, solved, revealPending, result }
   cards:    CONFIG.storagePrefix + 'cards',      // { 'suspects/butler': true, ... } cartes barrées
   results:  CONFIG.storagePrefix + 'results',    // [ { team, crest, seconds, correct, date, code }, ... ]
+  board:    CONFIG.storagePrefix + 'board',      // [ code, ... ] résultats reçus par le maître du jeu
 };
 function load(key, fallback) {
   try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
@@ -915,13 +970,14 @@ function persist(key, value) {
 let progress  = load(KEY.progress, null);
 let cardState = load(KEY.cards, {});
 let results   = load(KEY.results, []);
+let board     = Array.isArray(load(KEY.board, [])) ? load(KEY.board, []) : [];
 
 /* ---------- Références DOM ---------- */
 const el = {
   body: document.body,
   main: $('#main'),
   topbar: $('#topbar'), topbarCrest: $('#topbar-crest'), topbarTeam: $('#topbar-team'), timer: $('#timer'),
-  screens: { home: $('#screen-home'), room: $('#screen-room'), accusation: $('#screen-accusation'), result: $('#screen-result') },
+  screens: { home: $('#screen-home'), room: $('#screen-room'), accusation: $('#screen-accusation'), result: $('#screen-result'), board: $('#screen-board') },
   notebook: $('#notebook'),
   tabbar: $('#tabbar'), tabCase: $('#tab-case'), tabNotebook: $('#tab-notebook'), tabBadge: $('#tab-badge'),
   homeForm: $('#home-form'), teamInput: $('#team-name'), homeFeedback: $('#home-feedback'),
@@ -1048,7 +1104,7 @@ function showScreen(name) {
   currentScreen = name;
   for (const [k, sec] of Object.entries(el.screens)) sec.hidden = k !== name;
   el.body.dataset.screen = name;
-  const inGame = name !== 'home';
+  const inGame = name !== 'home' && name !== 'board';   // le classement final vit hors partie
   el.topbar.hidden = !inGame;
   el.tabbar.hidden = !inGame;
   if (!inGame) closeNotebook();
@@ -1165,6 +1221,7 @@ function enterGameChrome() {
 }
 // Choisit l'écran à afficher d'après la progression sauvegardée
 function route() {
+  if (routeHash()) return;
   if (!progress) { renderHome(); showScreen('home'); return; }
   if (progress.finishedAt) { renderResult(); showScreen('result'); return; }
   const index = progress.revealPending ? progress.solved - 1 : progress.solved;
@@ -1491,7 +1548,8 @@ function finishGame(accusation) {
 /* ======================================================================
    RÉSULTAT, CODE DE RÉSULTAT, CLASSEMENT LOCAL
    ====================================================================== */
-// Code compact : base64url d'un petit JSON { t: équipe, s: secondes, ok: accusation juste }
+// Code compact : base64url d'un petit JSON { t: équipe, s: secondes, ok: accusation juste, c: blason }
+// `c` = les cinq ids du blason joints par un point (field.second.partition.symbol.metal)
 function toBase64Url(str) {
   const bytes = new TextEncoder().encode(str);
   let bin = ''; bytes.forEach((b) => { bin += String.fromCharCode(b); });
@@ -1503,7 +1561,30 @@ function fromBase64Url(code) {
   const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
   return JSON.parse(new TextDecoder().decode(bytes));
 }
-function resultCode(entry) { return toBase64Url(JSON.stringify({ t: entry.team, s: entry.seconds, ok: entry.correct })); }
+const CREST_KEYS = ['field', 'second', 'partition', 'symbol', 'metal'];
+function crestToCode(crest) { return crest ? CREST_KEYS.map((k) => crest[k]).join('.') : undefined; }
+// Blason depuis un code ; null si absent ou si un id est inconnu (le classement affiche alors le nom seul)
+function crestFromCode(str) {
+  if (typeof str !== 'string') return null;
+  const parts = str.split('.');
+  if (parts.length !== CREST_KEYS.length) return null;
+  const crest = {}; CREST_KEYS.forEach((k, i) => { crest[k] = parts[i]; });
+  const ok = Object.hasOwn(CREST.tinctures, crest.field) && Object.hasOwn(CREST.tinctures, crest.second)
+    && CREST.partitions.includes(crest.partition) && Object.hasOwn(CREST.symbols, crest.symbol) && Object.hasOwn(CREST.metals, crest.metal);
+  return ok ? crest : null;
+}
+function resultCode(entry) {
+  return toBase64Url(JSON.stringify({ t: entry.team, s: entry.seconds, ok: entry.correct, c: crestToCode(entry.crest) }));
+}
+// Inverse de resultCode : { team, crest, seconds, correct, code } ou null si le code est invalide.
+// Les codes émis avant l'ajout du blason (sans `c`) restent acceptés.
+function parseResultCode(code) {
+  try {
+    const raw = fromBase64Url(code);
+    if (!raw || typeof raw.t !== 'string' || !raw.t.trim() || !Number.isFinite(raw.s) || raw.s < 0 || typeof raw.ok !== 'boolean') return null;
+    return { team: raw.t.trim().slice(0, 40), crest: crestFromCode(raw.c), seconds: Math.floor(raw.s), correct: raw.ok, code: String(code).trim() };
+  } catch { return null; }
+}
 // Pour l'organisateur : decodeResultCode('...') dans la console du navigateur
 window.decodeResultCode = fromBase64Url;
 
@@ -1511,26 +1592,37 @@ function saveResult(entry) {
   results.push(entry);
   persist(KEY.results, results);
   // LEADERBOARD HOOK
-  // Point d'accroche unique pour un classement partagé : envoyer ici `entry`
-  // (ou seulement `entry.code`) en POST vers un Google Sheet (Apps Script) ou JSONBin.
-  // Volontairement non implémenté : l'application reste 100 % statique.
+  // Point d'accroche pour un futur envoi automatique vers un service externe (Google Sheet…).
+  // Volontairement non implémenté : le classement final passe par les liens #r=CODE
+  // que chaque équipe envoie au maître du jeu (voir CLASSEMENT FINAL plus bas).
 }
-function sortedResults() {
-  return [...results].sort((a, b) => (b.correct - a.correct) || (a.seconds - b.seconds)).slice(0, CONFIG.leaderboardSize);
-}
-function renderBoardTable(current) {
-  const rows = sortedResults();
+// Règle de classement unique : accusation juste d'abord, puis temps croissant
+function sortEntries(list) { return [...list].sort((a, b) => (b.correct - a.correct) || (a.seconds - b.seconds)); }
+function sortedResults() { return sortEntries(results).slice(0, CONFIG.leaderboardSize); }
+// Tableau commun au classement local et au classement final.
+// opts.mark(r) : ligne à mettre en valeur ; opts.podium : trois premiers en laiton
+// opts.removable : bouton de retrait ; opts.copyable : bouton de copie du code + zone de message
+function boardTableHTML(rows, opts = {}) {
   if (!rows.length) return '';
+  const crown = `<svg class="board__crown" viewBox="0 0 100 100" aria-hidden="true">${CREST.symbols.crown}</svg>`;
   return `<table>
-    <thead><tr><th scope="col">${esc(t('boardRank'))}</th><th scope="col">${esc(t('boardTeam'))}</th><th scope="col">${esc(t('boardTime'))}</th><th scope="col">${esc(t('boardVerdict'))}</th></tr></thead>
-    <tbody>${rows.map((r, i) => `
-      <tr${current && r.code === current.code && r.date === current.date ? ' class="is-me"' : ''}>
-        <td class="num">${i + 1}</td>
+    <thead><tr><th scope="col">${esc(t('boardRank'))}</th><th scope="col">${esc(t('boardTeam'))}</th><th scope="col">${esc(t('boardTime'))}</th><th scope="col">${esc(t('boardVerdict'))}</th>${opts.copyable ? `<th scope="col"><span class="sr-only">${esc(t('copyHeader'))}</span></th>` : ''}${opts.removable ? `<th scope="col"><span class="sr-only">${esc(t('removeHeader'))}</span></th>` : ''}</tr></thead>
+    <tbody>${rows.map((r, i) => {
+      const classes = [opts.mark?.(r) ? 'is-me' : '', opts.podium && i < 3 ? `is-podium is-rank-${i + 1}` : ''].filter(Boolean).join(' ');
+      return `
+      <tr${classes ? ` class="${classes}"` : ''}>
+        <td class="num">${opts.podium && i === 0 ? crown : ''}${i + 1}</td>
         <td><span class="board__team">${r.crest ? `<span aria-hidden="true">${crestSVG(r.crest, r.team, 22)}</span>` : ''}${esc(r.team)}</span></td>
         <td class="num">${formatTime(r.seconds * 1000)}</td>
         <td><span class="verdict-pill ${r.correct ? 'verdict-pill--ok' : 'verdict-pill--ko'}">${esc(t(r.correct ? 'boardSolved' : 'boardFailed'))}</span></td>
-      </tr>`).join('')}
-    </tbody></table>`;
+        ${opts.copyable ? `<td class="act"><button type="button" class="iconbtn" data-copy="${esc(r.code)}" aria-label="${esc(t('copyRow', { team: r.team }))}">⧉</button></td>` : ''}
+        ${opts.removable ? `<td class="act"><button type="button" class="iconbtn" data-remove="${esc(r.code)}" aria-label="${esc(t('removeRow', { team: r.team }))}">✕</button></td>` : ''}
+      </tr>`; }).join('')}
+    </tbody></table>${opts.copyable ? '<p class="feedback" data-copy-feedback role="status" aria-live="polite"></p>' : ''}`;
+}
+// Classement local : la partie qui vient de se terminer est mise en valeur
+function renderBoardTable(current) {
+  return boardTableHTML(sortedResults(), { mark: (r) => !!current && r.code === current.code && r.date === current.date, copyable: true });
 }
 function renderResult() {
   const r = progress.result;
@@ -1553,7 +1645,7 @@ function renderResult() {
         <h3 id="code-title">${esc(t('codeTitle'))}</h3>
         <p class="muted">${esc(t('codeHelp'))}</p>
         <code class="code" id="result-code">${esc(r.code)}</code>
-        <button type="button" class="btn btn--ink" id="btn-copy">${esc(t('copy'))}</button>
+        <button type="button" class="btn btn--ink btn--primary btn--block" id="btn-copy">${esc(t('copy'))}</button>
         <p class="feedback" id="copy-feedback" role="status" aria-live="polite"></p>
       </section>
     </article>
@@ -1563,12 +1655,124 @@ function renderResult() {
       ${renderBoardTable(r)}
     </section>
     <div class="result-actions"><button type="button" class="btn btn--block" id="btn-new-game">${esc(t('newGame'))}</button></div>`;
-  $('#btn-copy').addEventListener('click', async () => {
-    const fb = $('#copy-feedback');
-    try { await navigator.clipboard.writeText(r.code); setFeedback(fb, t('copied'), 'ok'); }
-    catch { setFeedback(fb, t('copyFailed'), 'error'); }
+  // Le bouton est verrouillé pendant la copie : pas de double déclenchement
+  $('#btn-copy').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    if (btn.disabled) return;
+    btn.disabled = true;
+    try {
+      const ok = await copyText(r.code);
+      setFeedback($('#copy-feedback'), t(ok ? 'copied' : 'copyFailed'), ok ? 'ok' : 'error');
+    } finally { btn.disabled = false; }
   });
   $('#btn-new-game').addEventListener('click', clearGame);
+}
+
+/* ======================================================================
+   CLASSEMENT FINAL — écran du maître du jeu (route #board)
+   ----------------------------------------------------------------------
+   Aucun serveur : chaque équipe envoie son code de résultat sur Slack ; le
+   maître du jeu le colle ici, l'app accumule les codes dans localStorage
+   (KEY.board) et affiche le classement. Les liens #r=CODE et
+   #board=CODE,CODE,… restent acceptés, collés ou ouverts directement.
+   ====================================================================== */
+function pageUrl() { return location.href.split('#')[0]; }
+// Copie de secours, synchrone : ne demande pas d'activation utilisateur, donc reste
+// possible après un await (contrairement à navigator.clipboard).
+function legacyCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.cssText = 'position:fixed;top:0;left:-9999px;opacity:0';
+  document.body.appendChild(ta);
+  ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch { ok = false; }
+  ta.remove();
+  return ok;
+}
+// Copie un texte, sans jamais rester bloqué : si le document n'a pas le focus,
+// navigator.clipboard.writeText() ne se résout NI ne se rejette — d'où le délai de garde.
+async function copyText(text) {
+  if (navigator.clipboard?.writeText) {
+    const timeout = new Promise((resolve) => setTimeout(() => resolve(false), 1200));
+    try { if (await Promise.race([navigator.clipboard.writeText(text).then(() => true), timeout])) return true; }
+    catch { /* on passe au repli */ }
+  }
+  return legacyCopy(text);
+}
+function boardEntries() { return sortEntries(board.map(parseResultCode).filter(Boolean)); }
+// Ajoute des codes au classement ; renvoie { added: [entrées], invalid: n, duplicate: n }
+function addToBoard(codes) {
+  const outcome = { added: [], invalid: 0, duplicate: 0 };
+  for (const code of codes) {
+    const entry = parseResultCode(code);
+    if (!entry) { outcome.invalid++; continue; }
+    if (board.includes(entry.code)) { outcome.duplicate++; continue; }
+    board.push(entry.code); outcome.added.push(entry);
+  }
+  if (outcome.added.length) persist(KEY.board, board);
+  return outcome;
+}
+function removeFromBoard(code) { board = board.filter((c) => c !== code); persist(KEY.board, board); }
+// Codes présents dans un texte collé : code nu, plusieurs codes, ou lien #r= / #board=
+function extractCodes(text) {
+  const hash = /#(?:r|board)=([^#\s]+)/.exec(text);
+  return (hash ? hash[1] : String(text)).split(/[^A-Za-z0-9_-]+/).filter((tok) => tok.length >= 8);
+}
+// Routes par hash : #r=CODE (résultat reçu), #board ou #board=CODE,CODE (classement final)
+function routeHash() {
+  const m = /^#(r|board)(?:=(.*))?$/.exec(location.hash);
+  if (!m) return false;
+  const outcome = addToBoard(m[2] ? m[2].split(',').filter(Boolean) : []);
+  // Le hash est consommé : un rechargement ne réajoute rien et l'URL reste propre
+  if (m[2]) history.replaceState(null, '', '#board');
+  renderBoard(outcome.added[0]?.code || null);
+  showScreen('board');
+  return true;
+}
+function leaveBoard() { history.replaceState(null, '', pageUrl()); route(); }
+function renderBoard(highlight = null) {
+  const rows = boardEntries();
+  const count = rows.length === 1 ? t('finalCountOne') : t('finalCount', { n: rows.length });
+  el.screens.board.innerHTML = `
+    <header class="masthead">
+      <p class="masthead__kicker">${esc(t('finalKicker'))}</p>
+      <h1 id="board-screen-title" class="masthead__title" tabindex="-1">${esc(t('finalTitle'))}</h1>
+      <div class="rule" aria-hidden="true"><span></span></div>
+    </header>
+    <section class="board board--final" aria-labelledby="board-screen-title">
+      ${rows.length
+        ? `<p class="board__count">${esc(count)}</p>${boardTableHTML(rows, { mark: (r) => r.code === highlight, podium: true, removable: true })}`
+        : `<p class="board__empty">${esc(t('finalEmpty'))}</p>`}
+    </section>
+    <form class="enrol addcode" id="board-form" novalidate>
+      <div class="field">
+        <label for="board-code">${esc(t('addCodeLabel'))}</label>
+        <div class="addcode__row">
+          <input class="input" id="board-code" name="code" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" placeholder="${esc(t('addCodePlaceholder'))}">
+          <button type="submit" class="btn btn--primary">${esc(t('addCode'))}</button>
+        </div>
+      </div>
+      <p class="feedback" id="board-feedback" role="status" aria-live="polite"></p>
+    </form>
+    <div class="board-actions">
+      <button type="button" class="btn" id="btn-clear-board"${rows.length ? '' : ' disabled'}>${esc(t('clearBoard'))}</button>
+      <button type="button" class="btn" id="btn-board-home">${esc(t('backHome'))}</button>
+    </div>`;
+}
+// Saisie manuelle d'un code (ou d'un lien) par le maître du jeu
+function submitBoardCode() {
+  const form = $('#board-form'), input = $('#board-code');
+  const outcome = addToBoard(extractCodes(input.value));
+  if (outcome.added.length) {
+    renderBoard(outcome.added[0].code);
+    setFeedback($('#board-feedback'), t('addCodeAdded', { team: outcome.added[0].team }), 'ok');
+    $('#board-code').focus({ preventScroll: true });
+    return;
+  }
+  setFeedback($('#board-feedback'), t(outcome.duplicate ? 'addCodeDuplicate' : 'addCodeInvalid'), 'error');
+  shake(form); input.select();
 }
 
 /* ======================================================================
@@ -1576,6 +1780,17 @@ function renderResult() {
    ====================================================================== */
 function wireStatic() {
   el.teamInput.addEventListener('input', renderHomeCrest);
+  // Copie du code d'une ligne du classement local (accueil et écran de résultat) :
+  // délégation, car les tableaux sont régénérés à chaque rendu
+  el.main.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-copy]');
+    if (!btn || btn.disabled) return;
+    btn.disabled = true;
+    try {
+      const ok = await copyText(btn.dataset.copy);
+      setFeedback(btn.closest('.board')?.querySelector('[data-copy-feedback]'), t(ok ? 'copied' : 'copyFailed'), ok ? 'ok' : 'error');
+    } finally { btn.disabled = false; }
+  });
   // Personnalisation : un changement de bouton radio met l'état à jour et redessine
   el.homeForm.addEventListener('change', (e) => {
     const { name, value } = e.target;
@@ -1613,6 +1828,16 @@ function wireStatic() {
   });
   // Retour sur l'onglet : le chrono se recale immédiatement
   document.addEventListener('visibilitychange', () => { if (!document.hidden && progress) renderTimer(); });
+  // Classement final : délégation sur la section (son contenu est régénéré à chaque rendu)
+  el.screens.board.addEventListener('click', (e) => {
+    const rm = e.target.closest('[data-remove]');
+    if (rm) { removeFromBoard(rm.dataset.remove); renderBoard(); return; }
+    if (e.target.closest('#btn-clear-board')) { if (confirm(t('clearBoardConfirm'))) { board = []; persist(KEY.board, board); renderBoard(); } return; }
+    if (e.target.closest('#btn-board-home')) { leaveBoard(); return; }
+  });
+  el.screens.board.addEventListener('submit', (e) => { e.preventDefault(); submitBoardCode(); });
+  // Lien #r=… ou #board ouvert alors que l'app est déjà affichée dans l'onglet (ou lien du pied d'accueil)
+  window.addEventListener('hashchange', () => { if (/^#(r|board)(=|$)/.test(location.hash)) route(); });
 }
 function init() {
   renderHome();

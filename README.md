@@ -68,19 +68,52 @@ en commentaire au-dessus de `rooms`. `map: null` affiche une plaque nom + étage
 2. Settings → Pages → Source « Deploy from a branch », branche `main`, dossier `/ (root)`.
 3. L'app est servie à `https://<compte>.github.io/<dépôt>/`. Tous les chemins sont relatifs.
 
-## Code de résultat
+## Classement final (maître du jeu)
 
-À la fin, chaque équipe obtient un code base64url d'un petit JSON
-`{ t: nom, s: secondes, ok: accusation juste }`. Pour le décoder, dans la console
+Aucun serveur : le classement final se construit sur le téléphone du maître du
+jeu à partir des résultats que les équipes lui envoient.
+
+1. À la fin de l'enquête, l'écran de résultat affiche le code de résultat de
+   l'équipe et un bouton « Copy the code ». Le texte demande de l'envoyer à
+   Benjamin sur Slack. Pas de partage natif : `navigator.share` faisait planter
+   l'onglet sur certaines versions de Chrome (voir plus bas).
+2. Le maître du jeu colle chaque code reçu dans le champ « Add a result code » :
+   l'app l'ajoute à son classement (stocké en local) et affiche l'écran
+   « Final ranking ». Il peut retirer une ligne (doublon, test) ou vider le
+   classement.
+3. Les liens `index.html#r=CODE` et `index.html#board=CODE,CODE,…` restent
+   acceptés, ouverts directement ou collés dans le champ ; leurs résultats sont
+   fusionnés avec le classement local. Plus aucun lien n'est généré par l'app.
+
+L'écran est accessible à tout moment via `index.html#board` ou par le lien
+discret en pied de l'écran d'accueil. Tri : accusation juste d'abord, puis
+temps croissant ; les trois premiers sont mis en valeur, le premier porte une
+couronne. Les doublons (même code) sont ignorés.
+
+### Pourquoi pas de partage natif
+
+`navigator.share()` pouvait rejeter avec autre chose qu'un `AbortError`. Le repli
+`navigator.clipboard.writeText()` s'exécutait alors après un `await`, donc sans
+activation utilisateur : Chrome ne résout ni ne rejette cette promesse, le bouton
+restait muet, l'utilisateur recliquait, et le second `navigator.share()` tuait le
+processus de rendu (`RESULT_CODE_KILLED_BAD_MESSAGE`). La copie passe maintenant
+par `copyText()`, qui borne l'attente du presse-papiers et se replie sur une copie
+synchrone `execCommand`.
+
+### Code de résultat
+
+Base64url d'un petit JSON `{ t: nom, s: secondes, ok: accusation juste, c: blason }`,
+où `c` est la suite des cinq ids du blason séparés par un point
+(`wine.forest.plain.tower.gold`). Un code sans `c` (ancienne version) reste
+accepté, le nom s'affiche alors sans blason. Pour le décoder dans la console
 du navigateur (n'importe quelle page de l'app) :
 
 ```js
 decodeResultCode('eyJ0IjoiTGVzIExpbW…')
 ```
 
-Il n'y a pas de classement partagé : l'app affiche un classement local des
-parties jouées sur l'appareil. Le point d'accroche pour un futur envoi vers
-Google Sheet ou JSONBin est marqué `// LEADERBOARD HOOK` dans `saveResult()`.
+Le point d'accroche pour un futur envoi automatique vers un service externe
+reste marqué `// LEADERBOARD HOOK` dans `saveResult()`.
 
 ## Stockage local
 
@@ -90,3 +123,5 @@ Google Sheet ou JSONBin est marqué `// LEADERBOARD HOOK` dans `saveResult()`.
 - `chateau.cards` : cartes barrées.
 - `chateau.results` : classement local (le blason y est conservé et affiché en
   miniature devant le nom d'équipe).
+- `chateau.board` : codes de résultat reçus par le maître du jeu (classement
+  final). Indépendant de la partie en cours sur l'appareil.
