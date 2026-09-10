@@ -24,13 +24,23 @@ Tout est dans le premier bloc `<script>` de `index.html` :
 
 - `CONFIG` : réglages (dossier des cartes, plan par défaut, taille du classement,
   `revealSolutionOnFailure`).
-- `UI` : tous les textes de l'interface, dont la lettre d'accueil (`UI.welcome`).
+- `UI` : tous les textes de l'interface, dont la lettre d'accueil (`UI.welcome`)
+  et les libellés du blason (`UI.crest`).
 - `suspects`, `weapons`, `pieces` : 7 cartes par axe, `{ id, name, isSolution }`.
   Mettre `isSolution: true` sur **une** carte par axe pour définir la solution.
 - `rooms` : les 6 salles. Chaque salle a `name`, `floor`, `ambiance`, `map`,
   `cartons`, `inputLabel`, `inputMode`, `answers`, `clues`, `eliminates`.
   Les réponses sont comparées après normalisation (minuscules, sans accents,
   sans espaces). `eliminates` n'est jamais affiché au joueur.
+
+### Blason d'équipe
+
+Sur l'écran d'accueil, l'équipe compose son blason : couleur du champ, seconde
+couleur, motif, emblème et métal, avec un bouton « Surprise me » pour un tirage
+aléatoire. Le dessin (couleurs, motifs, symboles SVG) est dans `CREST`, en bas
+de `index.html`, indexé par des ids stables (`wine`, `tower`, `gold`…) ; les
+libellés affichés sont dans `UI.crest`. Pour ajouter une option, ajouter une
+entrée dans `CREST` **et** son libellé dans `UI.crest`.
 
 ### Images des cartes
 
@@ -74,7 +84,9 @@ Google Sheet ou JSONBin est marqué `// LEADERBOARD HOOK` dans `saveResult()`.
 
 ## Stockage local
 
-- `chateau.progress` : équipe, graine du blason, timestamps de départ et de fin,
-  nombre de salles résolues, résultat.
+- `chateau.progress` : équipe, blason choisi (`crest`), timestamps de départ et de
+  fin, nombre de salles résolues, résultat. Une sauvegarde antérieure qui n'a
+  qu'une graine (`crestSeed`) est convertie au chargement, à l'identique.
 - `chateau.cards` : cartes barrées.
-- `chateau.results` : classement local.
+- `chateau.results` : classement local (le blason y est conservé et affiché en
+  miniature devant le nom d'équipe).
