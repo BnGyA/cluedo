@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marie-Antoinette — the letter and the mask</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&display=block" rel="stylesheet">
+<style>
+/* ======================================================================
+   Chambre Marie-Antoinette — la lettre à Fersen et son masque
+   (grille de Cardan). Accessoire à imprimer, hors de l'app.
+
+   Feuille 1 (A4 paysage) : la lettre à gauche, le masque à droite. Les deux
+   passent dans l'imprimante en même temps, donc à la même échelle. On
+   découpe chaque pièce le long de son trait gris : mêmes dimensions, les
+   bords s'alignent, la fleur de lys donne le sens.
+   Feuille 2 : le carton d'instructions (A6) et un masque de rechange.
+   Les deux phrases `.redact` de la lettre sont à raturer à la plume après
+   impression : elles s'impriment en clair, le pointillé n'apparaît qu'à l'écran.
+
+   Les fenêtres du masque ne sont pas dessinées à la main : le script mesure
+   la position réelle des mots marqués `.hit` dans la lettre rendue (police
+   chargée ou police de repli) et pose les fenêtres aux mêmes coordonnées
+   en millimètres. Le bouton « Check » superpose le masque sur la lettre à
+   l'écran pour vérifier la lecture avant d'imprimer.
+
+   Impression : A4 paysage, échelle 100 % (jamais « ajuster à la page »),
+   marges « aucune », sans en-têtes ni pieds de page. La règle de 10 cm
+   dans la gouttière permet de vérifier l'échelle au réglet.
+   ====================================================================== */
+@page { size: A4 landscape; margin: 0; }
+:root {
+  --ink: #2b2219;
+  --rule: #8f8f8f;
+  --gutter: #7c756a;
+  --lys: #2b2219;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: #5a534b;
+  font-family: 'IM Fell English', Georgia, 'Times New Roman', serif;
+  color: var(--ink);
+  print-color-adjust: exact; -webkit-print-color-adjust: exact;
+}
+
+/* ---------- Barre d'outils, écran seulement ---------- */
+.toolbar {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center;
+  padding: 12px 18px;
+  background: #2e2a25; color: #e9e2d2;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 14px;
+}
+.toolbar button {
+  font: inherit; padding: 7px 14px; border-radius: 6px; cursor: pointer;
+  border: 1px solid #a88b52; background: #3d362e; color: #f0e8d6;
+}
+.toolbar button:hover { background: #4a4238; }
+.toolbar .note { opacity: .8; }
+.toolbar .readout { flex-basis: 100%; font-size: 13px; opacity: .9; }
+.toolbar .readout b { color: #d9bd7c; font-weight: 600; }
+
+/* ---------- Feuilles ---------- */
+.sheet {
+  position: relative; width: 297mm; height: 210mm; overflow: hidden;
+  margin: 14mm auto; background: #fff;
+  box-shadow: 0 10px 30px rgba(0,0,0,.45);
+  break-after: page; page-break-after: always;
+}
+.sheet:last-child { break-after: auto; page-break-after: auto; }
+
+/* Deux demi-feuilles A5 côte à côte ; la lettre et le masque partagent
+   exactement le même cadre, aux mêmes coordonnées dans leur demi-feuille. */
+.panel { position: absolute; top: 0; width: 148.5mm; height: 210mm; }
+.panel--left  { left: 0; }
+.panel--right { left: 148.5mm; }
+
+/* Trait de coupe : même rectangle sur les deux pièces */
+.cut {
+  position: absolute; left: 8mm; top: 8mm; width: 132.5mm; height: 194mm;
+  border: .2mm solid var(--rule);
+}
+/* Cadre imprimé : double filet + fleur de lys en haut à gauche */
+.frame {
+  position: absolute; left: 10mm; top: 10mm; width: 128.5mm; height: 190mm;
+  border: .4mm solid var(--ink);
+}
+.frame::before {
+  content: ''; position: absolute; inset: 1.1mm; border: .15mm solid var(--ink);
+  pointer-events: none;
+}
+.lys {
+  position: absolute; top: 3mm; left: 3.2mm; width: 7.4mm; height: 9.6mm;
+  fill: var(--lys);
+}
+
+/* ---------- La lettre ---------- */
+.letter {
+  position: absolute; inset: 0;
+  padding: 14mm 9.5mm 9mm 9.5mm;
+  font-size: 10pt; line-height: 1.68;
+}
+.letter p { margin: 0 0 .85em; hyphens: none; word-spacing: .06em; }
+.letter .dateline { text-align: right; font-style: italic; margin-bottom: 1.5em; }
+.letter .signoff { text-align: right; margin-top: 1.1em; margin-bottom: 0; }
+.letter .signature { font-size: 12pt; letter-spacing: .08em; }
+/* Les mots que le masque laisse voir : aucun style visible, surtout pas. */
+.hit { }
+/* Passages à noyer sous l'encre, à la plume, après impression (comme dans les
+   vraies lettres). Ils s'impriment en clair ; à l'écran seulement, un pointillé
+   les repère pour le maître du jeu. */
+.redact { text-decoration: underline dotted rgba(43,34,25,.55); text-underline-offset: .18em; }
+@media print { .redact { text-decoration: none; } }
+
+/* ---------- Le masque ---------- */
+.mask .win {
+  position: absolute;
+  border: .2mm solid var(--rule); border-radius: .5mm;
+  background: #fff;
+  print-color-adjust: exact; -webkit-print-color-adjust: exact;
+}
+.mask .caption {
+  position: absolute; left: 0; right: 0; bottom: 4mm;
+  text-align: center; font-style: italic; font-size: 8pt; color: var(--ink); opacity: .75;
+}
+
+/* ---------- Gouttière : règle 10 cm + consignes ---------- */
+.gutter-text {
+  position: absolute; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 6.5pt; color: var(--gutter); white-space: nowrap;
+  transform-origin: left top;
+}
+.ruler { position: absolute; left: 148.5mm; top: 55mm; width: 0; height: 100mm; border-left: .2mm solid var(--gutter); }
+.ruler::before, .ruler::after {
+  content: ''; position: absolute; left: -1.5mm; width: 3mm; height: 0; border-top: .2mm solid var(--gutter);
+}
+.ruler::before { top: 0; } .ruler::after { bottom: 0; }
+
+/* ---------- Superposition de contrôle, écran seulement ---------- */
+#overlay {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  display: none; pointer-events: none;
+}
+#overlay path { fill: rgba(52,38,22,.78); }
+body.show-overlay #overlay { display: block; }
+
+/* ---------- Feuille 2 : carton d'instructions ---------- */
+.card {
+  position: absolute; left: 21.75mm; top: 31mm; width: 105mm; height: 148mm;
+  border: .2mm solid var(--rule);
+}
+.card .frame { left: 6mm; top: 6mm; width: 93mm; height: 136mm; }
+.card .body {
+  position: absolute; inset: 0; padding: 15mm 8mm 10mm;
+  display: flex; flex-direction: column;
+}
+.card .label {
+  font-family: 'IM Fell English SC', 'IM Fell English', Georgia, serif;
+  font-size: 9pt; letter-spacing: .22em; text-transform: uppercase;
+  margin: 0 0 5mm; color: var(--ink); opacity: .8;
+}
+.card .text { font-size: 11pt; line-height: 1.55; margin: 0; }
+.card .foot {
+  margin-top: auto; font-size: 8pt; font-style: italic; opacity: .7; text-align: center;
+}
+
+@media print {
+  body { background: none; }
+  .toolbar, #overlay { display: none !important; }
+  .sheet { margin: 0; box-shadow: none; }
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="lys" viewBox="0 0 100 130">
+    <!-- pétale central -->
+    <path d="M50 2 C37 20 33 44 50 70 C67 44 63 20 50 2 Z"/>
+    <!-- pétales latéraux en volute -->
+    <path d="M47 63 C26 63 6 54 5 34 C4 20 12 12 20 14 C26 15 28 22 24 26 C20 24 16 26 16 32 C17 44 30 55 47 58 Z"/>
+    <path d="M47 63 C26 63 6 54 5 34 C4 20 12 12 20 14 C26 15 28 22 24 26 C20 24 16 26 16 32 C17 44 30 55 47 58 Z" transform="matrix(-1 0 0 1 100 0)"/>
+    <!-- bandeau -->
+    <rect x="26" y="64" width="48" height="9" rx="2"/>
+    <!-- pied -->
+    <path d="M50 75 C41 88 40 102 50 122 C60 102 59 88 50 75 Z"/>
+    <path d="M46 76 C30 80 19 92 22 110 C26 116 32 114 31 108 C29 104 32 98 38 92 C41 88 44 84 47 86 Z"/>
+    <path d="M46 76 C30 80 19 92 22 110 C26 116 32 114 31 108 C29 104 32 98 38 92 C41 88 44 84 47 86 Z" transform="matrix(-1 0 0 1 100 0)"/>
+  </symbol>
+</svg>
+
+<div class="toolbar">
+  <button id="print" type="button">Print · A4 landscape · 100 % · no margins</button>
+  <button id="toggle" type="button">Check: lay the mask over the letter</button>
+  <span class="note">Cut each piece along its grey line, then the twelve windows. Ink over the two dotted sentences by hand, then laminate both.</span>
+  <div class="readout">Through the windows, in order: <b id="readout">…</b></div>
+</div>
+
+<!-- ============================ FEUILLE 1 ============================ -->
+<section class="sheet" aria-label="Sheet 1: the letter and the mask">
+
+  <!-- La lettre -->
+  <div class="panel panel--left" id="letter">
+    <div class="cut"></div>
+    <div class="frame">
+      <svg class="lys"><use href="#lys"/></svg>
+      <div class="letter">
+        <p class="dateline">Tuileries, this twelfth of June 1791</p>
+        <p>My dear and tender friend,</p>
+        <p>Your letter reached me on Tuesday, carried through Brussels as you wished, and I have read it three times over. Forgive me for writing <span class="hit">at</span> such length: the days here are long, and the nights longer still. I seldom sleep before <span class="hit">midnight</span>, and the least noise in the courtyard wakes me. <span class="redact">I reach in the dark for a hand that is not there.</span></p>
+        <p>The children are well. The Dauphin has a new regiment of lead soldiers and drills them on <span class="hit">the</span> carpet with great severity. Madame Royale reads to me in the evening, once the <span class="hit">carriage</span> has brought the ladies back from Saint-Cloud. The garden is much changed. The gardener <span class="hit">leaves</span> nothing to chance, and has planted lilacs along <span class="hit">the</span> wall where the roses were.</p>
+        <p>I have taken up the harp again. Léonard came on Thursday and found my hair a fright, which I bear with patience, for the <span class="hit">word</span> of a hairdresser is the only honest judgement left at this court. The physician orders rest, and I obey him <span class="hit">for</span> the sake of <span class="hit">the</span> children more than for my own.</p>
+        <p>Do you remember the road from Vienna, and the inn at Compiègne where the wind blew out every candle? The <span class="hit">guard</span> at the gate swore we should be robbed before morning, and we were not. They say the air <span class="hit">is</span> good at Montmédy, and better still at <span class="hit">Varennes</span>, where my aunt once stopped on her way to Fontainebleau. Perhaps we shall see those places together one day, without a soldier at every door.</p>
+        <p><span class="redact">I love you madly.</span> Burn nothing of mine. Keep everything, as I keep everything of yours.</p>
+        <p class="signoff"><span class="signature">M. A.</span></p>
+      </div>
+      <svg id="overlay" preserveAspectRatio="none" aria-hidden="true"><path d=""/></svg>
+    </div>
+  </div>
+
+  <!-- Le masque -->
+  <div class="panel panel--right mask">
+    <div class="cut"></div>
+    <div class="frame">
+      <svg class="lys"><use href="#lys"/></svg>
+      <p class="caption">fleur-de-lys upon fleur-de-lys</p>
+    </div>
+  </div>
+
+  <!-- Gouttière -->
+  <div class="ruler"></div>
+  <span class="gutter-text" style="left:146.2mm; top:52mm;">10 cm</span>
+  <span class="gutter-text" style="left:143.5mm; top:108mm; transform: rotate(90deg);">Print at 100 %. Cut both pieces along their grey lines.</span>
+</section>
+
+<!-- ============================ FEUILLE 2 ============================ -->
+<section class="sheet" aria-label="Sheet 2: the instruction card and a spare mask">
+
+  <!-- Le carton, tel qu'affiché dans l'app -->
+  <div class="panel panel--left">
+    <div class="card">
+      <div class="frame">
+        <svg class="lys"><use href="#lys"/></svg>
+        <div class="body">
+          <p class="label">Instructions</p>
+          <p class="text">“The queen wrote to Fersen in plain words that meant nothing, and hid the truth between them. Her letter alone will tell you nothing. What reads it, she kept apart, and confided to her sleep alone. Find it, and read only what it lets you see. The guard at the gate waits for one word.”</p>
+          <p class="foot">Marie-Antoinette Bedroom · Château Guillermo</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Masque de rechange, même position que sur la feuille 1 -->
+  <div class="panel panel--right mask">
+    <div class="cut"></div>
+    <div class="frame">
+      <svg class="lys"><use href="#lys"/></svg>
+      <p class="caption">fleur-de-lys upon fleur-de-lys</p>
+    </div>
+  </div>
+  <span class="gutter-text" style="left:143.5mm; top:120mm; transform: rotate(90deg);">Spare mask · instruction card</span>
+</section>
+
+<script>
+(function () {
+  'use strict';
+  var MM = 96 / 25.4;              // pixels CSS par millimètre
+  var PAD_X = 0.9, PAD_Y = 0.55;   // marge de la fenêtre autour du mot, en mm
+
+  var letterFrame = document.querySelector('#letter .frame');
+  var hits = Array.prototype.slice.call(document.querySelectorAll('#letter .hit'));
+  var maskFrames = Array.prototype.slice.call(document.querySelectorAll('.mask .frame'));
+  var overlay = document.getElementById('overlay');
+  var overlayPath = overlay.querySelector('path');
+  var readout = document.getElementById('readout');
+
+  // Position de chaque mot marqué, en mm, relative au bord intérieur du cadre
+  function measure() {
+    var fb = letterFrame.getBoundingClientRect();
+    var ox = fb.left + letterFrame.clientLeft;
+    var oy = fb.top + letterFrame.clientTop;
+    return hits.map(function (el) {
+      var r = el.getBoundingClientRect();
+      return {
+        x: (r.left - ox) / MM - PAD_X,
+        y: (r.top - oy) / MM - PAD_Y,
+        w: r.width / MM + 2 * PAD_X,
+        h: r.height / MM + 2 * PAD_Y,
+        word: el.textContent
+      };
+    });
+  }
+
+  function mm(v) { return v.toFixed(2) + 'mm'; }
+
+  function layout() {
+    var rects = measure();
+
+    // Fenêtres du masque (et du masque de rechange), aux mêmes coordonnées
+    maskFrames.forEach(function (frame) {
+      Array.prototype.slice.call(frame.querySelectorAll('.win')).forEach(function (n) { n.remove(); });
+      rects.forEach(function (r) {
+        var d = document.createElement('div');
+        d.className = 'win';
+        d.style.left = mm(r.x); d.style.top = mm(r.y);
+        d.style.width = mm(r.w); d.style.height = mm(r.h);
+        frame.appendChild(d);
+      });
+    });
+
+    // Superposition de contrôle : le cadre plein moins les fenêtres (evenodd)
+    var W = letterFrame.clientWidth / MM, H = letterFrame.clientHeight / MM;
+    var d = 'M0 0H' + W.toFixed(2) + 'V' + H.toFixed(2) + 'H0Z';
+    rects.forEach(function (r) {
+      d += 'M' + r.x.toFixed(2) + ' ' + r.y.toFixed(2) + 'h' + r.w.toFixed(2) + 'v' + r.h.toFixed(2) + 'h' + (-r.w).toFixed(2) + 'Z';
+    });
+    overlay.setAttribute('viewBox', '0 0 ' + W.toFixed(2) + ' ' + H.toFixed(2));
+    overlayPath.setAttribute('d', d);
+    overlayPath.setAttribute('fill-rule', 'evenodd');
+
+    readout.textContent = rects.map(function (r) { return r.word; }).join(' · ');
+  }
+
+  // #check dans l'URL ouvre directement la superposition de contrôle
+  if (location.hash === '#check') { document.body.classList.add('show-overlay'); }
+
+  layout();
+  if (document.fonts && document.fonts.ready) { document.fonts.ready.then(layout); }
+  if (document.fonts && 'onloadingdone' in document.fonts) { document.fonts.addEventListener('loadingdone', layout); }
+  window.addEventListener('load', layout);
+  window.addEventListener('beforeprint', layout);
+
+  document.getElementById('toggle').addEventListener('click', function () {
+    document.body.classList.toggle('show-overlay');
+  });
+  document.getElementById('print').addEventListener('click', function () { window.print(); });
+})();
+</script>
+</body>
+</html>

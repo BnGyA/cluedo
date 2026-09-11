@@ -12,6 +12,7 @@ cluedo/
 ├── README.md
 └── assets/
     ├── maps/           # plans des étages (ground-floor.jpg, first-floor.jpg, second-floor.jpg)
+    ├── print/          # accessoires à imprimer (lettre + masque de la chambre Marie-Antoinette)
     └── cards/
         ├── suspects/   # {id}.png × 7
         ├── weapons/    # {id}.png × 7
@@ -66,17 +67,47 @@ Nommer les fichiers d'après les `id` des tableaux :
 assets/cards/suspects/  governess housekeeper inventor notary gardener cook doctor
 assets/cards/weapons/   candlestick dagger revolver rope poison poker billiard-cue
 assets/cards/pieces/    billiard-room rotunda-bar kitchen salon bonaparte-bedroom
-                        marie-antoinette-bedroom room-6
+                        marie-antoinette-bedroom louis-xiv-bedroom
 ```
 
-Format PNG, ratio conseillé 5:7 (carte à jouer). Une image absente affiche un
-placeholder propre avec le nom et une icône générique.
+Format PNG, ratio conseillé 5:7 (carte à jouer). Une image absente laisse
+apparaître l'icône de la carte (voir ci-dessous) sur fond papier.
+
+### Icônes des cartes
+
+Chaque carte a sa silhouette SVG dans `cardIcons` (fin du premier bloc
+`<script>`, indexé par axe puis par `id`) : elle occupe le cadre de la carte et
+de sa fiche tant que l'image PNG manque, et reste derrière l'image sinon. Une
+carte sans entrée retombe sur l'icône générique de son axe (`ICON_FALLBACK`,
+script principal). Pour changer une icône : coller le contenu d'un SVG 512×512
+sans couleur (`<path d="…"/>`), la teinte est donnée par le CSS (`.card__icon`).
+
+Les silhouettes viennent de [Game-icons.net](https://game-icons.net) (licence
+[CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), auteurs Lorc,
+Delapouite et Caro Asercion, nom d'origine indiqué avant chaque entrée). Le
+tisonnier et la queue de billard sont dessinés pour le projet.
 
 ### Plans
 
 `map.src` pointe vers le plan de l'étage, `map.zone` surligne la pièce en % de
 l'image (`{ x, y, w, h }`). Les zones relevées sur les trois plans sont listées
 en commentaire au-dessus de `rooms`. `map: null` affiche une plaque nom + étage.
+
+### Accessoires à imprimer
+
+`assets/print/marie-antoinette-letter.html` : la lettre de la reine à Fersen et
+son masque, une grille de Cardan, pour la chambre Marie-Antoinette. Ouvrir le
+fichier dans Chrome, cliquer « Check » (ou ajouter `#check` à l'URL) pour
+vérifier à l'écran que les douze fenêtres tombent sur les bons mots, puis
+imprimer en A4 paysage, échelle 100 %, sans marges ni en-têtes. La feuille 1
+porte la lettre et le masque côte à côte : même passage dans l'imprimante,
+donc même échelle. La feuille 2 porte le carton d'instructions et un masque
+de rechange. Découper chaque pièce le long de son trait gris, puis les
+fenêtres du masque au cutter, raturer à la plume les deux phrases repérées en
+pointillé à l'écran, et plastifier les deux : les fenêtres deviennent des vitres. Les positions des fenêtres sont calculées depuis le rendu réel de
+la lettre, la police peut donc manquer ou changer sans casser l'alignement.
+Le mot caché et la mise en place sont commentés au-dessus de la salle dans
+`rooms`.
 
 ## Déployer sur GitHub Pages
 
