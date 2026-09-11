@@ -28,6 +28,11 @@ Tout est dans le premier bloc `<script>` de `index.html` :
   et les libellés du blason (`UI.crest`).
 - `suspects`, `weapons`, `pieces` : 7 cartes par axe, `{ id, name, isSolution }`.
   Mettre `isSolution: true` sur **une** carte par axe pour définir la solution.
+  Les suspects portent en plus `tagline` (clin d'œil à la vie de la boîte),
+  `motive` (la raison qui aurait pu pousser au meurtre) et, pour le coupable,
+  `reveal` (phrase affichée sur le verdict réussi). Toute carte qui porte un
+  `tagline` ou un `motive` reçoit un sceau dans son coin, dans le carnet : il
+  ouvre sa fiche (portrait, clin d'œil, mobile, barrer / restaurer).
 - `rooms` : les 6 salles. Chaque salle a `name`, `floor`, `ambiance`, `map`,
   `cartons`, `inputLabel`, `inputMode`, `answers`, `clues`, `eliminates`.
   Les réponses sont comparées après normalisation (minuscules, sans accents,
@@ -47,7 +52,7 @@ entrée dans `CREST` **et** son libellé dans `UI.crest`.
 Nommer les fichiers d'après les `id` des tableaux :
 
 ```
-assets/cards/suspects/  butler housekeeper countess notary gardener cook doctor
+assets/cards/suspects/  governess housekeeper inventor notary gardener cook doctor
 assets/cards/weapons/   candlestick dagger revolver rope poison poker billiard-cue
 assets/cards/pieces/    billiard-room rotunda-bar kitchen bonaparte-bedroom
                         marie-antoinette-bedroom library wine-cellar
