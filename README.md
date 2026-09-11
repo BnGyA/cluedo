@@ -33,8 +33,19 @@ Tout est dans le premier bloc `<script>` de `index.html` :
   `reveal` (phrase affichée sur le verdict réussi). Toute carte qui porte un
   `tagline` ou un `motive` reçoit un sceau dans son coin, dans le carnet : il
   ouvre sa fiche (portrait, clin d'œil, mobile, barrer / restaurer).
+- `pieces` suit une règle à part : **pas d'indice « room »**. Les sept cartes
+  sont les six salles d'épreuve (même `id` que dans `rooms`) plus une pièce
+  sans épreuve, la scène du crime (`isSolution: true`). Les cartes pièces ne
+  se barrent pas à la main : chaque salle résolue grise la sienne dans le
+  carnet (tampon « searched ») et la révélation le dit à l'équipe ; à la fin,
+  seule la scène du crime reste active et l'accusation la présélectionne. `init()` signale dans la console
+  toute incohérence entre `pieces` et `rooms` (salle sans carte, plusieurs
+  pièces sans épreuve, solution sur une salle d'épreuve, cartes dans l'ordre
+  des salles). L'ordre du tableau est l'ordre d'affichage : le garder
+  alphabétique, jamais dans l'ordre de visite.
 - `rooms` : les 6 salles. Chaque salle a `name`, `floor`, `ambiance`, `map`,
   `cartons`, `inputLabel`, `inputMode`, `answers`, `clues`, `eliminates`.
+  `clues` et `eliminates` n'ont que deux axes, `culprit` et `weapon`.
   Les réponses sont comparées après normalisation (minuscules, sans accents,
   sans espaces). `eliminates` n'est jamais affiché au joueur.
 
@@ -54,8 +65,8 @@ Nommer les fichiers d'après les `id` des tableaux :
 ```
 assets/cards/suspects/  governess housekeeper inventor notary gardener cook doctor
 assets/cards/weapons/   candlestick dagger revolver rope poison poker billiard-cue
-assets/cards/pieces/    billiard-room rotunda-bar kitchen bonaparte-bedroom
-                        marie-antoinette-bedroom library wine-cellar
+assets/cards/pieces/    billiard-room rotunda-bar kitchen salon bonaparte-bedroom
+                        marie-antoinette-bedroom room-6
 ```
 
 Format PNG, ratio conseillé 5:7 (carte à jouer). Une image absente affiche un
@@ -125,7 +136,8 @@ reste marqué `// LEADERBOARD HOOK` dans `saveResult()`.
 - `chateau.progress` : équipe, blason choisi (`crest`), timestamps de départ et de
   fin, nombre de salles résolues, résultat. Une sauvegarde antérieure qui n'a
   qu'une graine (`crestSeed`) est convertie au chargement, à l'identique.
-- `chateau.cards` : cartes barrées.
+- `chateau.cards` : cartes barrées par le joueur. Les pièces grisées ne sont pas
+  stockées : elles se déduisent du nombre de salles résolues.
 - `chateau.results` : classement local (le blason y est conservé et affiché en
   miniature devant le nom d'équipe).
 - `chateau.board` : codes de résultat reçus par le maître du jeu (classement

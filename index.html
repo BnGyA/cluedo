@@ -72,7 +72,9 @@ const UI = {
   emptyAnswer: 'Write an answer first.',
   wrongAnswer: 'The chief detective shakes his head. That is not it. Look again.',
   revealTitle: 'Word from the chief detective',
-  revealIntro: 'Well played. Three clues have been added to your notebook.',
+  revealIntro: 'Well played. Two clues have been added to your notebook.',
+  // Affiché sous les indices : la salle résolue est grisée dans le carnet (voir `pieces`)
+  revealRoom: 'One more thing. The {room} has been searched from top to bottom: nothing happened here. It is greyed out in your notebook.',
   nextRoom: 'Continue to the next room',
   toAccusation: 'Proceed to the final accusation',
   axisCulprit: 'Culprit',
@@ -82,7 +84,7 @@ const UI = {
   cluesTitle: 'Clues collected',
   cluesEmpty: 'No clues yet. Solve the first challenge to receive some.',
   cardsTitle: 'The cards',
-  cardsHelp: 'Tap a card to cross it out, tap again to restore it. The notebook never crosses anything out for you.',
+  cardsHelp: 'Tap a suspect or a weapon to cross it out, tap again to restore it. The rooms take care of themselves: each one greys out once its challenge is solved, because the crime did not happen there.',
   groupSuspects: 'Suspects',
   // Fiche d'une carte (sceau sur la carte) : clin d'œil + mobile
   fileOpen: 'Open the file of {name}',
@@ -95,8 +97,9 @@ const UI = {
   groupRooms: 'Rooms',
   remaining: '{n} of {total} left',
   eliminated: 'eliminated',
+  searched: 'searched',            // tampon des pièces grisées par l'app (salle d'épreuve résolue)
   resetCards: 'Reset my cards',
-  resetConfirm: 'Restore all 21 cards?',
+  resetConfirm: 'Restore every crossed-out card?',
   abandon: 'Abandon this investigation',
   abandonConfirm: 'Abandon the investigation? Progress and clock will be lost.',
   accusationKicker: 'Final accusation',
@@ -159,6 +162,7 @@ const UI = {
    Sept entrées par axe. `id` sert au nom de fichier de l'illustration
    ({cardsDir}/{axe}/{id}.png) et aux champs `eliminates` des salles.
    Marquer isSolution: true sur UNE carte par axe : c'est la solution.
+   Les pièces obéissent à une règle à part, voir le commentaire de `pieces`.
 
    Les suspects portent en plus :
    - tagline : le clin d'œil à la vie de la boîte (affiché dans la fiche
@@ -207,14 +211,24 @@ const weapons = [
   { id: 'billiard-cue', name: 'The Billiard Cue', isSolution: false },
 ];
 
+/* Les pièces : pas d'indice « room ». Les sept cartes sont les six salles
+   d'épreuve (même `id` que dans `rooms`) plus UNE pièce sans épreuve : la
+   scène du crime. Chaque salle résolue grise sa carte dans le carnet
+   (tampon « searched », carte non cliquable) ; à la fin, seule la scène du
+   crime reste active. isSolution: true va donc sur la pièce sans épreuve ;
+   init() signale dans la console toute incohérence entre `pieces` et `rooms`.
+   Ordre d'affichage (carnet et menu d'accusation) : alphabétique, donc
+   volontairement différent de l'ordre des salles, pour que le grisage ne
+   suive pas la visite. Quand la 6e salle aura son nom, replacer sa carte à
+   sa place alphabétique. */
 const pieces = [
+  { id: 'room-6',                   name: 'Bedroom to be defined',    isSolution: false }, // même id et nom que la 6e salle
   { id: 'billiard-room',            name: 'Billiard Room',            isSolution: false },
-  { id: 'rotunda-bar',              name: 'Rotunda Bar',              isSolution: false },
-  { id: 'kitchen',                  name: 'Kitchen',                  isSolution: false },
   { id: 'bonaparte-bedroom',        name: 'Bonaparte Bedroom',        isSolution: false },
+  { id: 'kitchen',                  name: 'Kitchen',                  isSolution: false },
   { id: 'marie-antoinette-bedroom', name: 'Marie-Antoinette Bedroom', isSolution: false },
-  { id: 'library',                  name: 'Library',                  isSolution: false },
-  { id: 'wine-cellar',              name: 'Wine Cellar',              isSolution: false },
+  { id: 'rotunda-bar',              name: 'Rotunda Bar',              isSolution: false },
+  { id: 'salon',                    name: 'Salon',                    isSolution: true  }, // scène du crime : aucune épreuve (RDC)
 ];
 
 /* ---------- Les six salles ----------
@@ -230,7 +244,9 @@ const pieces = [
    - inputMode        : 'text' ou 'numeric' (clavier mobile adapté)
    - answers          : réponses acceptées, comparées après normalisation
                         (minuscules, sans accents, sans espaces)
-   - clues            : les trois indices affichés après réussite
+   - clues            : les deux indices affichés après réussite (culprit,
+                        weapon). Pas d'indice « room » : la salle elle-même
+                        est grisée dans le carnet une fois résolue
    - eliminates       : id de la carte écartée par chaque indice — jamais
                         affiché au joueur, à remplir pour vérifier la cohérence
 
@@ -257,13 +273,8 @@ const rooms = [
     ambiance: 'The felt is still warm. Someone played here tonight, and not for the love of the game.',
     map: { src: 'assets/maps/ground-floor.jpg', zone: { x: 55, y: 52, w: 22, h: 28 } },
     cartons: [
-      // VO : « Le maître de maison ne jouait qu'avec les rouges. »
-      { label: 'Card near a portrait',
-        text: '“The master of the house only ever played with the reds.”' },
-      // VO : « Le maître de ces lieux n'a jamais aimé le hasard. Retournez ses boules,
-      //        remettez chaque lettre à sa place, et vous lirez le mot de passe. »
-      { label: 'Main card, on a table', main: true,
-        text: '“The master of this house never cared for chance. Turn over his balls, put each letter back in its place, and you will read the password.”' },
+      { label: 'Instructions', main: true,
+        text: '“The master of this house never left anything to chance. He watches over this room still. Meet his gaze, and see what he played with.”' },
     ],
     inputLabel: 'The password',
     inputMode: 'text',
@@ -271,9 +282,8 @@ const rooms = [
     clues: {
       culprit: 'The floors were spotless. Not a speck of earth, not a blade of grass: the killer had not set foot in the garden all week.',
       weapon: 'INDICE À DÉFINIR',
-      room: 'INDICE À DÉFINIR',
     },
-    eliminates: { culprit: 'gardener', weapon: null, room: null },
+    eliminates: { culprit: 'gardener', weapon: null },
   },
   {
     id: 'rotunda-bar',
@@ -282,14 +292,8 @@ const rooms = [
     ambiance: 'Glasses knocked over, a bottle uncorked, and nobody left to raise a toast.',
     map: { src: 'assets/maps/ground-floor.jpg', zone: { x: 76.5, y: 67, w: 15, h: 21 } },
     cartons: [
-      // VO : « Le maître de maison ne trinquait qu'au champagne. »
-      { label: 'Card near a Ruinart poster',
-        text: '“The master of the house only ever toasted with champagne.”' },
-      // VO : « Le maître de ces lieux n'a jamais aimé le hasard. Servez sa cave dans l'ordre
-      //        des années, du plus vieux millésime au plus jeune, et lisez ce qu'il a laissé
-      //        sous chaque bouteille. »
-      { label: 'Main card, on the counter', main: true,
-        text: '“The master of this house never cared for chance. Serve his cellar in order of years, from the oldest vintage to the youngest, and read what he left under each bottle.”' },
+      { label: 'Instructions, on the counter', main: true,
+        text: '“The master trusted age over luck. Every label carries a year, every bottle hides a mark. Set them oldest to youngest, and read what they leave behind.”' },
     ],
     inputLabel: 'The vintage',
     inputMode: 'numeric',
@@ -297,9 +301,8 @@ const rooms = [
     clues: {
       culprit: 'At nine, as every night, the whole house heard the usual explosion from the attic workshop, and the usual “it almost worked”. The master died in that very minute.',
       weapon: 'INDICE À DÉFINIR',
-      room: 'INDICE À DÉFINIR',
     },
-    eliminates: { culprit: 'inventor', weapon: null, room: null },
+    eliminates: { culprit: 'inventor', weapon: null },
   },
   {
     id: 'kitchen',
@@ -308,7 +311,8 @@ const rooms = [
     ambiance: 'AMBIANCE À DÉFINIR',
     map: { src: 'assets/maps/ground-floor.jpg', zone: { x: 50.5, y: 17.7, w: 27.5, h: 34.3 } },
     cartons: [
-      { label: 'Main card', main: true, text: 'ÉNONCÉ À DÉFINIR' },
+      { label: 'Instructions', main: true,
+        text: '“The Mistress kept one recipe for each day of the week. Her notes are now scattered across the kitchen.”' },
     ],
     inputLabel: 'Your answer',
     inputMode: 'text',
@@ -316,9 +320,8 @@ const rooms = [
     clues: {
       culprit: 'Whoever did this had never studied medicine, and could not have told a pulse from a hiccup.',
       weapon: 'INDICE À DÉFINIR',
-      room: 'INDICE À DÉFINIR',
     },
-    eliminates: { culprit: 'doctor', weapon: null, room: null },
+    eliminates: { culprit: 'doctor', weapon: null },
   },
   {
     id: 'bonaparte-bedroom',
@@ -327,18 +330,17 @@ const rooms = [
     ambiance: 'AMBIANCE À DÉFINIR',
     map: { src: 'assets/maps/first-floor.jpg', zone: null },   // zone : chambre 1, 2 ou 3 ? voir liste ci-dessus
     cartons: [
-      { label: 'Main card', main: true,
-        text: 'Three books have no business on these shelves. Each one hides a card. Gather the three cards: ÉNONCÉ À DÉFINIR.' },
+      { label: 'Instructions', main: true,
+        text: 'Five books have no business on these shelves. Each one hides a card. The master left one word behind, but scrambled it so no stranger could read it: QZTPJ. Gather the five cards, restore each letter, and you will know what he protected above all.' },
     ],
     inputLabel: 'Your answer',
     inputMode: 'text',
-    answers: ['dummy'],
+    answers: ['elium'],
     clues: {
       culprit: 'At nine the children were being read their bedtime story, as every night. The two little ones swear their governess never left the nursery.',
       weapon: 'INDICE À DÉFINIR',
-      room: 'INDICE À DÉFINIR',
     },
-    eliminates: { culprit: 'governess', weapon: null, room: null },
+    eliminates: { culprit: 'governess', weapon: null },
   },
   {
     id: 'marie-antoinette-bedroom',
@@ -347,7 +349,7 @@ const rooms = [
     ambiance: 'AMBIANCE À DÉFINIR',
     map: { src: 'assets/maps/first-floor.jpg', zone: null },   // zone : chambre 1, 2 ou 3 ? voir liste ci-dessus
     cartons: [
-      { label: 'Main card', main: true, text: 'ÉNONCÉ À DÉFINIR' },
+      { label: 'Instructions', main: true, text: 'ÉNONCÉ À DÉFINIR' },
     ],
     inputLabel: 'Your answer',
     inputMode: 'text',
@@ -355,9 +357,8 @@ const rooms = [
     clues: {
       culprit: 'The door was forced. The killer had none of the keys of this house, and the great ring of keys never left its hook.',
       weapon: 'INDICE À DÉFINIR',
-      room: 'INDICE À DÉFINIR',
     },
-    eliminates: { culprit: 'housekeeper', weapon: null, room: null },
+    eliminates: { culprit: 'housekeeper', weapon: null },
   },
   {
     id: 'room-6',
@@ -366,7 +367,7 @@ const rooms = [
     ambiance: 'AMBIANCE À DÉFINIR',
     map: null,                                                   // pas encore de plan : plaque nom + étage
     cartons: [
-      { label: 'Main card', main: true, text: 'ÉNONCÉ À DÉFINIR' },
+      { label: 'Instructions', main: true, text: 'ÉNONCÉ À DÉFINIR' },
     ],
     inputLabel: 'Your answer',
     inputMode: 'text',
@@ -374,9 +375,8 @@ const rooms = [
     clues: {
       culprit: 'There was no flour, no grease and no onion on the killer’s hands.',
       weapon: 'INDICE À DÉFINIR',
-      room: 'INDICE À DÉFINIR',
     },
-    eliminates: { culprit: 'cook', weapon: null, room: null },
+    eliminates: { culprit: 'cook', weapon: null },
   },
 ];
 </script>
@@ -725,7 +725,8 @@ select.input { appearance: auto; -webkit-appearance: menulist; padding-right: 36
 .clue-note:nth-child(2) { transform: rotate(.5deg); }
 .clue-note:nth-child(3) { transform: rotate(-.4deg); }
 .clue-note__axis { font-size: .62rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--sage); }
-.clue-note__text { font-family: var(--font-title); font-style: italic; font-size: 1.02rem; line-height: 1.4; }
+.clue-note__text { font-family: var(--font-title); font-size: 1.02rem; line-height: 1.45; }
+.reveal__room { margin: 14px 0 0; font-size: .95rem; color: rgba(232,223,200,.85); }
 .reveal .btn { margin-top: 16px; }
 @media (prefers-reduced-motion: no-preference) {
   .reveal { animation: rise .45s ease-out both; }
@@ -737,7 +738,7 @@ select.input { appearance: auto; -webkit-appearance: menulist; padding-right: 36
 .clues-room__name { margin: 0 0 6px; font-family: var(--font-ui); font-size: .7rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--brass-light); }
 .clue-line { display: grid; grid-template-columns: 64px 1fr; gap: 10px; align-items: baseline; margin: 0; padding: 4px 0; border-bottom: 1px solid rgba(176,141,76,.18); }
 .clue-line__axis { font-size: .62rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--sage); }
-.clue-line__text { font-family: var(--font-title); font-style: italic; font-size: .98rem; line-height: 1.4; }
+.clue-line__text { font-family: var(--font-title); font-size: 1rem; line-height: 1.5; }
 .recap { margin: 18px 0 0; padding: 14px; background: rgba(18,33,28,.06); border: 1px dashed #a89b7d; }
 .recap__title { font-size: 1.1rem; margin-bottom: 10px; }
 .recap .clues-room__name { color: var(--wine); }
@@ -816,6 +817,20 @@ select.input { appearance: auto; -webkit-appearance: menulist; padding-right: 36
     linear-gradient(to top right, transparent calc(50% - 2px), var(--wine) calc(50% - 2px), var(--wine) calc(50% + 2px), transparent calc(50% + 2px)),
     linear-gradient(to top left,  transparent calc(50% - 2px), var(--wine) calc(50% - 2px), var(--wine) calc(50% + 2px), transparent calc(50% + 2px)),
     rgba(18,33,28,.28);
+}
+/* Cartes pièces : de simples <div>, pas de barrage manuel, pas de survol.
+   Pièce fouillée (salle d'épreuve résolue) : grisée par l'app, tampon « searched ».
+   Distinct du barrage manuel (croix bordeaux) : ici pas de croix, un voile et un tampon vert-de-gris. */
+.card--static { cursor: default; }
+@media (hover: hover) { .card--static:hover { transform: none; box-shadow: 0 2px 4px rgba(0,0,0,.4), 0 8px 14px rgba(0,0,0,.28); } }
+.card.is-searched { background: var(--paper-deep); }
+.card.is-searched .card__art, .card.is-searched .card__name { filter: grayscale(1); opacity: .35; }
+.card.is-searched::after { content: ''; position: absolute; inset: 0; border-radius: 6px; pointer-events: none; background: rgba(18,33,28,.22); }
+.card__stamp {
+  position: absolute; left: 50%; top: 50%; z-index: 1; pointer-events: none;
+  padding: 3px 7px; transform: translate(-50%, -50%) rotate(-16deg);
+  border: 2px solid var(--sage); color: var(--sage); background: rgba(243,237,220,.9);
+  font-family: var(--font-ui); font-size: .58rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; white-space: nowrap;
 }
 
 /* ---------- Accusation ---------- */
@@ -1052,12 +1067,16 @@ const normalize = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036
 const desktopQuery = window.matchMedia('(min-width: 1024px)');
 const isDesktop = () => desktopQuery.matches;
 
-// Les trois axes de l'enquête, reliés aux tableaux de cartes
+// Les trois axes de l'enquête, reliés aux tableaux de cartes.
+// `clue` : l'axe reçoit un indice par salle et l'équipe barre elle-même ses
+// cartes. Les pièces n'ont ni l'un ni l'autre : la salle résolue est grisée
+// par l'app, la carte n'est pas cliquable (voir le commentaire de `pieces`).
 const AXES = [
-  { key: 'culprit', dir: 'suspects', list: suspects, label: 'axisCulprit', group: 'groupSuspects' },
-  { key: 'weapon',  dir: 'weapons',  list: weapons,  label: 'axisWeapon',  group: 'groupWeapons'  },
-  { key: 'room',    dir: 'pieces',   list: pieces,   label: 'axisRoom',    group: 'groupRooms'    },
+  { key: 'culprit', dir: 'suspects', list: suspects, label: 'axisCulprit', group: 'groupSuspects', clue: true  },
+  { key: 'weapon',  dir: 'weapons',  list: weapons,  label: 'axisWeapon',  group: 'groupWeapons',  clue: true  },
+  { key: 'room',    dir: 'pieces',   list: pieces,   label: 'axisRoom',    group: 'groupRooms',    clue: false },
 ];
+const CLUE_AXES = AXES.filter((ax) => ax.clue);
 
 // Icônes génériques des cartes sans illustration (une par axe)
 const ICONS = {
@@ -1254,9 +1273,24 @@ function shake(node) {
 
 /* ---------- Helpers de jeu ---------- */
 const solvedRooms = () => rooms.slice(0, progress?.solved || 0);
-const clueCount = () => (progress?.solved || 0) * 3;
-const isStruck = (axis, card) => !!cardState[`${axis.dir}/${card.id}`];
-const activeCards = (axis) => axis.list.filter((c) => !isStruck(axis, c));
+const clueCount = () => (progress?.solved || 0) * CLUE_AXES.length;
+// Barrage manuel : réservé aux axes à indices (une ancienne sauvegarde avec une pièce barrée est ignorée)
+const isStruck = (axis, card) => axis.clue && !!cardState[`${axis.dir}/${card.id}`];
+// Pièce « fouillée » : une salle résolue porte le même id. Grisée par l'app, hors du choix du joueur.
+const isSearched = (axis, card) => axis.key === 'room' && solvedRooms().some((r) => r.id === card.id);
+const activeCards = (axis) => axis.list.filter((c) => !isStruck(axis, c) && !isSearched(axis, c));
+// Cohérence pièces / salles, signalée dans la console (pas de conséquence pour le joueur)
+function checkPieces() {
+  const roomIds = new Set(rooms.map((r) => r.id));
+  rooms.filter((r) => !pieces.some((p) => p.id === r.id))
+    .forEach((r) => console.warn(`Salle « ${r.id} » sans carte dans pieces : elle ne sera pas grisée dans le carnet.`));
+  const untested = pieces.filter((p) => !roomIds.has(p.id));
+  if (untested.length !== 1) console.warn(`${untested.length} pièce(s) sans épreuve au lieu d'une (la scène du crime) : ${untested.map((p) => p.id).join(', ') || '—'}.`);
+  const sol = solutionOf(AXES.find((ax) => ax.key === 'room'));
+  if (sol && roomIds.has(sol.id)) console.warn(`La pièce isSolution « ${sol.id} » accueille une épreuve : elle sera grisée avant l'accusation.`);
+  const tested = pieces.filter((p) => roomIds.has(p.id));
+  if (tested.length > 1 && tested.every((p, i) => p.id === rooms[i]?.id)) console.warn('Les cartes pièces suivent l\'ordre des salles : mélanger `pieces` pour que le grisage ne trahisse pas la visite.');
+}
 const solutionOf = (axis) => axis.list.find((c) => c.isSolution) || null;
 const cardName = (axis, id) => axis.list.find((c) => c.id === id)?.name || '?';
 
@@ -1393,8 +1427,9 @@ function renderReveal(room, index) {
     <h3 id="reveal-title" class="reveal__title" tabindex="-1">${esc(t('revealTitle'))}</h3>
     <p class="reveal__intro">${esc(t('revealIntro'))}</p>
     <ul class="clue-list">
-      ${AXES.map((ax) => `<li class="clue-note"><span class="clue-note__axis">${esc(t(ax.label))}</span><span class="clue-note__text">${esc(room.clues[ax.key])}</span></li>`).join('')}
+      ${CLUE_AXES.map((ax) => `<li class="clue-note"><span class="clue-note__axis">${esc(t(ax.label))}</span><span class="clue-note__text">${esc(room.clues[ax.key])}</span></li>`).join('')}
     </ul>
+    ${pieces.some((p) => p.id === room.id) ? `<p class="reveal__room">${esc(t('revealRoom', { room: room.name }))}</p>` : ''}
     <button type="button" class="btn btn--primary btn--block" id="btn-continue">${esc(t(last ? 'toAccusation' : 'nextRoom'))}</button>
   </section>`;
 }
@@ -1481,21 +1516,34 @@ function renderCluesByRoom() {
   return `<div class="clues-by-room">${solved.map((room, i) => `
     <section class="clues-room" aria-label="${esc(room.name)}">
       <h4 class="clues-room__name">${i + 1}. ${esc(room.name)}</h4>
-      ${AXES.map((ax) => `<p class="clue-line"><span class="clue-line__axis">${esc(t(ax.label))}</span><span class="clue-line__text">${esc(room.clues[ax.key])}</span></p>`).join('')}
+      ${CLUE_AXES.map((ax) => `<p class="clue-line"><span class="clue-line__axis">${esc(t(ax.label))}</span><span class="clue-line__text">${esc(room.clues[ax.key])}</span></p>`).join('')}
     </section>`).join('')}</div>`;
 }
 const SEAL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>';
 const hasFile = (card) => !!(card.tagline || card.motive);
-// Une carte = un bouton qui la barre ; à côté, le sceau ouvre sa fiche (frère, pas enfant : deux boutons imbriqués sont interdits)
+// Suspects et armes : une carte = un bouton qui la barre ; à côté, le sceau ouvre sa fiche
+// (frère, pas enfant : deux boutons imbriqués sont interdits).
+// Pièces : une simple <div>, jamais cliquable ; grisée et tamponnée « searched » quand sa salle est résolue.
 function renderCardButton(axis, card) {
-  const struck = isStruck(axis, card);
   const src = `${CONFIG.cardsDir}/${axis.dir}/${card.id}.png`;
+  const art = `<span class="card__art">${ICONS[axis.dir]}<img src="${esc(src)}" alt="" loading="lazy" decoding="async"></span>`;
   const seal = hasFile(card)
     ? `<button type="button" class="card__seal" data-axis="${axis.dir}" data-id="${esc(card.id)}" aria-label="${esc(t('fileOpen', { name: card.name }))}"><span>${SEAL_ICON}</span></button>`
     : '';
+  if (!axis.clue) {
+    const searched = isSearched(axis, card);
+    return `<div class="card-slot">
+      <div class="card card--static${searched ? ' is-searched' : ''}" data-axis="${axis.dir}" data-id="${esc(card.id)}">
+        ${art}
+        <span class="card__name">${esc(card.name)}</span>
+        ${searched ? `<span class="card__stamp">${esc(t('searched'))}</span>` : ''}
+      </div>${seal}
+    </div>`;
+  }
+  const struck = isStruck(axis, card);
   return `<div class="card-slot">
     <button type="button" class="card${struck ? ' is-struck' : ''}" data-axis="${axis.dir}" data-id="${esc(card.id)}" aria-pressed="${struck}" aria-label="${esc(card.name)}">
-      <span class="card__art">${ICONS[axis.dir]}<img src="${esc(src)}" alt="" loading="lazy" decoding="async"></span>
+      ${art}
       <span class="card__name">${esc(card.name)}</span>
     </button>${seal}
   </div>`;
@@ -1507,9 +1555,10 @@ function openCardFile(axisDir, id) {
   if (!card) return;
   const dlg = el.cardDialog;
   const render = () => {
-    const struck = isStruck(axis, card);
-    dlg.innerHTML = `<article class="file${struck ? ' is-struck' : ''}">
-      ${struck ? `<span class="file__stamp" aria-hidden="true">${esc(t('eliminated'))}</span>` : ''}
+    const searched = isSearched(axis, card);
+    const struck = !searched && isStruck(axis, card);
+    dlg.innerHTML = `<article class="file${struck || searched ? ' is-struck' : ''}">
+      ${struck || searched ? `<span class="file__stamp" aria-hidden="true">${esc(t(searched ? 'searched' : 'eliminated'))}</span>` : ''}
       <div class="file__head">
         <span class="file__art">${ICONS[axis.dir]}<img src="${esc(`${CONFIG.cardsDir}/${axis.dir}/${card.id}.png`)}" alt="" decoding="async"></span>
         <div>
@@ -1520,13 +1569,13 @@ function openCardFile(axisDir, id) {
       ${card.tagline ? `<p class="file__tagline">${esc(card.tagline)}</p>` : ''}
       ${card.motive ? `<p class="file__motive"><span class="file__label">${esc(t('motiveLabel'))}</span>${esc(card.motive)}</p>` : ''}
       <div class="file__actions">
-        <button type="button" class="btn btn--ink" id="card-dialog-strike">${esc(t(struck ? 'fileRestore' : 'fileCross'))}</button>
+        ${searched || !axis.clue ? '' : `<button type="button" class="btn btn--ink" id="card-dialog-strike">${esc(t(struck ? 'fileRestore' : 'fileCross'))}</button>`}
         <button type="button" class="btn btn--ink btn--primary" id="card-dialog-close">${esc(t('fileClose'))}</button>
       </div>
     </article>`;
     wireCardImages(dlg);
     $('#card-dialog-close', dlg).addEventListener('click', () => dlg.close());
-    $('#card-dialog-strike', dlg).addEventListener('click', () => {
+    $('#card-dialog-strike', dlg)?.addEventListener('click', () => {
       // Le barrage passe par le bouton de la carte : état, compteur et accusation restent synchronisés
       const btn = $(`.card[data-axis="${axis.dir}"][data-id="${card.id}"]`, el.notebook);
       if (btn) toggleCard(btn);
@@ -1550,7 +1599,7 @@ function renderNotebook() {
     <section class="nb-section" aria-labelledby="nb-clues">
       <div class="nb-section__head">
         <h3 id="nb-clues" class="nb-section__title">${esc(t('cluesTitle'))}</h3>
-        <span class="nb-section__count">${clueCount()} / ${rooms.length * 3}</span>
+        <span class="nb-section__count">${clueCount()} / ${rooms.length * CLUE_AXES.length}</span>
       </div>
       ${renderCluesByRoom()}
     </section>
@@ -1581,6 +1630,7 @@ function wireCardImages(root) {
   });
 }
 function toggleCard(btn) {
+  if (!AXES.find((ax) => ax.dir === btn.dataset.axis)?.clue) return;   // pièce : grisée par l'app, jamais par le joueur
   const key = `${btn.dataset.axis}/${btn.dataset.id}`;
   if (cardState[key]) delete cardState[key]; else cardState[key] = true;
   persist(KEY.cards, cardState);
@@ -1604,7 +1654,7 @@ function updateBadge() {
 function resetCards() {
   cardState = {};
   persist(KEY.cards, cardState);
-  $$('.card', el.notebook).forEach((btn) => { btn.classList.remove('is-struck'); btn.setAttribute('aria-pressed', 'false'); });
+  $$('button.card', el.notebook).forEach((btn) => { btn.classList.remove('is-struck'); btn.setAttribute('aria-pressed', 'false'); });
   updateCounts();
   if (currentScreen === 'accusation') updateAccusationDefaults();
 }
@@ -1679,7 +1729,10 @@ function currentAccusation() {
 function updateAccusationDefaults() {
   AXES.forEach((ax) => {
     const sel = $(`#acc-${ax.key}`); if (!sel) return;
-    ax.list.forEach((c, i) => { sel.options[i + 1].textContent = c.name + (isStruck(ax, c) ? ` (${t('eliminated')})` : ''); });
+    ax.list.forEach((c, i) => {
+      const suffix = isSearched(ax, c) ? t('searched') : isStruck(ax, c) ? t('eliminated') : '';
+      sel.options[i + 1].textContent = c.name + (suffix ? ` (${suffix})` : '');
+    });
     if (sel.dataset.auto !== 'true') return;
     const active = activeCards(ax);
     const hint = $(`#hint-${ax.key}`);
@@ -2008,12 +2061,137 @@ function wireStatic() {
   window.addEventListener('hashchange', () => { if (/^#(r|board)(=|$)/.test(location.hash)) route(); });
 }
 function init() {
+  checkPieces();
   renderHome();
   wireStatic();
   if (progress) enterGameChrome();
   route();
 }
 init();
+
+/* ======================================================================
+   TODO: REMOVE — HELPER DEV : navigation libre entre les étapes
+   Panneau flottant (en haut à droite) pour sauter à n'importe quel écran
+   sans jouer : accueil, chaque salle (avant / après résolution), accusation,
+   résultat juste / faux, classement final. « Solve » remplit la bonne
+   réponse de la salle courante et la soumet. « Wipe » efface toutes les clés
+   chateau.* du localStorage et recharge. Raccourcis : Alt+← / Alt+→ pour
+   changer d'étape, Alt+Entrée pour résoudre. Console : DEV.goTo('room-2'),
+   DEV.solve(), DEV.steps. Tout est contenu dans ce bloc (styles compris) :
+   le supprimer d'un seul tenant avant l'événement.
+   ====================================================================== */
+const DEV = (() => {
+  const roomIndex = () => (progress.revealPending ? progress.solved - 1 : progress.solved);
+  // Garantit une partie en cours (nom saisi sur l'accueil, sinon « Dev team ») et quitte un éventuel #board
+  const ensureGame = () => {
+    if (!progress) {
+      progress = { team: el.teamInput.value.trim() || 'Dev team', crest: { ...homeCrest }, startedAt: Date.now(), finishedAt: null, solved: 0, revealPending: false, result: null };
+      cardState = {}; persist(KEY.cards, cardState);
+    }
+    progress.finishedAt = null; progress.result = null;
+    history.replaceState(null, '', pageUrl());
+    enterGameChrome();
+  };
+  const goHome = () => { history.replaceState(null, '', pageUrl()); clearGame(); };
+  const goRoom = (index, solved) => {
+    ensureGame();
+    progress.solved = solved ? index + 1 : index;
+    progress.revealPending = solved;
+    persist(KEY.progress, progress);
+    renderNotebook(); updateBadge();
+    route();
+  };
+  const goAccusation = () => goRoom(rooms.length, false);
+  // Accusation bâtie sur les cartes isSolution (juste) ou juste à côté (fausse).
+  // Tant qu'une arme et une pièce n'ont pas isSolution: true, « correct » restera faux (voir finishGame).
+  const goResult = (correct) => {
+    goAccusation();
+    const accusation = Object.fromEntries(AXES.map((ax) => {
+      const sol = solutionOf(ax);
+      return [ax.key, (correct ? sol || ax.list[0] : ax.list.find((c) => c !== sol)).id];
+    }));
+    finishGame(accusation);
+  };
+  const goBoard = () => { if (location.hash === '#board') route(); else location.hash = '#board'; };
+  const solve = () => {
+    const input = $('#answer-input'), form = $('#answer-form');
+    if (!progress || !input || !form) return;
+    input.value = rooms[roomIndex()]?.answers?.[0] ?? '';
+    form.requestSubmit();
+  };
+  const wipe = () => {
+    Object.keys(localStorage).filter((k) => k.startsWith(CONFIG.storagePrefix)).forEach((k) => localStorage.removeItem(k));
+    location.replace(pageUrl());
+  };
+
+  const steps = [
+    { id: 'home', label: 'Home', go: goHome },
+    ...rooms.flatMap((r, i) => [
+      { id: `room-${i}`, label: `${i + 1}. ${r.name}`, go: () => goRoom(i, false) },
+      { id: `room-${i}-solved`, label: `${i + 1}. ${r.name} · solved`, go: () => goRoom(i, true) },
+    ]),
+    { id: 'accusation', label: 'Accusation', go: goAccusation },
+    { id: 'result-ok', label: 'Result · correct', go: () => goResult(true) },
+    { id: 'result-ko', label: 'Result · wrong', go: () => goResult(false) },
+    { id: 'board', label: 'Board', go: goBoard },
+  ];
+  // Étape courante déduite de l'état, pas du DOM
+  const currentId = () => {
+    if (/^#board/.test(location.hash)) return 'board';
+    if (!progress) return 'home';
+    if (progress.finishedAt) return progress.result?.correct ? 'result-ok' : 'result-ko';
+    if (progress.solved >= rooms.length && !progress.revealPending) return 'accusation';
+    return `room-${roomIndex()}${progress.revealPending ? '-solved' : ''}`;
+  };
+  const goTo = (id) => steps.find((s) => s.id === id)?.go();
+  const shift = (delta) => {
+    const i = steps.findIndex((s) => s.id === currentId());
+    goTo(steps[Math.max(0, Math.min(steps.length - 1, i + delta))].id);
+  };
+
+  // Panneau : styles injectés + <aside> ajouté au body
+  document.head.insertAdjacentHTML('beforeend', `<style id="dev-style">
+    .dev { position: fixed; top: 6px; right: 6px; z-index: 9999; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; max-width: calc(100vw - 12px); padding: 4px; background: #111; color: #ffd400; border: 2px dashed #ffd400; border-radius: 8px; font: 12px/1 ui-monospace, Menlo, monospace; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+    .dev button, .dev select { font: inherit; color: #ffd400; background: #222; border: 1px solid #555; border-radius: 4px; padding: 5px 7px; cursor: pointer; max-width: 44vw; }
+    .dev button:hover, .dev select:hover { background: #333; }
+    .dev__toggle { font-weight: 700; }
+    .dev.is-collapsed > :not(.dev__toggle) { display: none; }
+  </style>`);
+  const panel = document.createElement('aside');
+  panel.className = 'dev'; panel.id = 'dev-helper'; panel.setAttribute('aria-label', 'Dev helper');
+  panel.innerHTML = `
+    <button type="button" class="dev__toggle" data-dev="toggle" title="Show / hide the dev helper">DEV</button>
+    <button type="button" data-dev="prev" title="Previous step (Alt+←)">◀</button>
+    <select data-dev="step" aria-label="Step">${steps.map((s) => `<option value="${s.id}">${esc(s.label)}</option>`).join('')}</select>
+    <button type="button" data-dev="next" title="Next step (Alt+→)">▶</button>
+    <button type="button" data-dev="solve" title="Fill the right answer and submit (Alt+Enter)">Solve</button>
+    <button type="button" data-dev="wipe" title="Clear every chateau.* key in localStorage and reload">Wipe</button>`;
+  document.body.appendChild(panel);
+  const select = panel.querySelector('[data-dev="step"]');
+  const sync = () => { select.value = currentId(); };
+  const actions = {
+    toggle: () => { panel.classList.toggle('is-collapsed'); sessionStorage.setItem('chateau.dev', panel.classList.contains('is-collapsed') ? '1' : ''); },
+    prev: () => shift(-1), next: () => shift(1), solve, wipe,
+  };
+  panel.addEventListener('click', (e) => { const a = e.target.closest('[data-dev]')?.dataset.dev; if (actions[a]) { actions[a](); sync(); } });
+  select.addEventListener('change', () => { goTo(select.value); sync(); });
+  if (sessionStorage.getItem('chateau.dev')) panel.classList.add('is-collapsed');
+  // Suit les changements d'écran faits par l'app elle-même (réponse soumise, accusation…)
+  let raf = 0;
+  new MutationObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(sync); })
+    .observe(el.main, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
+  window.addEventListener('hashchange', sync);
+  document.addEventListener('keydown', (e) => {
+    if (!e.altKey || e.ctrlKey || e.metaKey || e.target.matches('input, textarea, select')) return;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); shift(-1); sync(); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); shift(1); sync(); }
+    else if (e.key === 'Enter') { e.preventDefault(); solve(); }
+  });
+  sync();
+  return { steps, goTo, solve, wipe };
+})();
+window.DEV = DEV;
+/* TODO: REMOVE — fin du helper dev ====================================== */
 })();
 </script>
 </body>
