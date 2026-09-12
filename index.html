@@ -29,6 +29,7 @@ const CONFIG = {
   revealSolutionOnFailure: false,   // afficher la vraie solution après une accusation fausse ?
                                     // (false par défaut : évite les fuites entre équipes)
   leaderboardSize: 20,              // nombre de lignes du classement local
+  hintPenaltySeconds: 30,           // secondes ajoutées au chrono par indice demandé (voir `hints` des salles)
 };
 
 /* ---------- Textes de l'interface ----------
@@ -71,6 +72,17 @@ const UI = {
   answerButton: 'Submit to the chief detective',
   emptyAnswer: 'Write an answer first.',
   wrongAnswer: 'The chief detective shakes his head. That is not it. Look again.',
+  // Indices payants d'une salle (champ `hints` de `rooms`) : {seconds} = CONFIG.hintPenaltySeconds
+  hintTitle: 'Need a hand?',
+  hintHelp: 'The chief detective can put you on the right track, at a price: every hint adds {seconds} seconds to your final time.',
+  hintAsk: 'Ask for a hint (+{seconds} s)',
+  hintAskAgain: 'Ask for another hint (+{seconds} s)',
+  hintConfirmText: 'This adds {seconds} seconds to your final time. Ask anyway?',
+  hintConfirmYes: 'Yes, I need it',
+  hintConfirmNo: 'Not yet',
+  hintLabel: 'Hint from the chief detective · +{seconds} s',
+  hintLabelN: 'Hint {n} of {total} · +{seconds} s',
+  hintExhausted: 'The chief detective has nothing more to add.',
   revealTitle: 'Word from the chief detective',
   revealIntro: 'Well played. Two clues have been added to your notebook.',
   // Affiché sous les indices : la salle résolue est grisée dans le carnet (voir `pieces`)
@@ -90,6 +102,7 @@ const UI = {
   fileOpen: 'Open the file of {name}',
   fileKicker: { suspects: 'Suspect file', weapons: 'Weapon file', pieces: 'Room file' },
   motiveLabel: 'Motive',
+  historyLabel: 'History',         // fiche d'une pièce (champ `history` de `pieces`)
   fileCross: 'Cross out',
   fileRestore: 'Restore',
   fileClose: 'Close',
@@ -102,6 +115,9 @@ const UI = {
   resetConfirm: 'Restore every crossed-out card?',
   abandon: 'Abandon this investigation',
   abandonConfirm: 'Abandon the investigation? Progress and clock will be lost.',
+  // Écran de résultat : la vraie histoire du château (voir `houseHistory`)
+  houseKicker: 'Beyond the fiction',
+  houseTitle: 'The real château',
   accusationKicker: 'Final accusation',
   accusationTitle: 'Name the guilty party',
   accusationLead: 'You hold every clue the chief detective had to give. Cross-reference them, check your notebook, then make your accusation. The clock stops the moment you do.',
@@ -119,6 +135,9 @@ const UI = {
   verdictFailureText: 'Team {team} accused {culprit}, with {weapon}, in the {room}. The chief detective is not convinced.',
   solutionWas: 'The truth: {culprit}, with {weapon}, in the {room}.',
   finalTime: 'Final time',
+  // Sous le temps final, seulement si l'équipe a demandé des indices
+  hintsSummary: 'Including {seconds} seconds of penalty for {n} hints.',
+  hintsSummaryOne: 'Including {seconds} seconds of penalty for one hint.',
   // Envoi du résultat au maître du jeu : copie du code, envoyé sur Slack
   codeTitle: 'Your result code',
   codeHelp: 'Copy this code and send it to Benjamin on Slack so your result counts in the final ranking. It encodes your team name, your crest, your time and your verdict.',
@@ -219,15 +238,40 @@ const weapons = [
    init() signale dans la console toute incohérence entre `pieces` et `rooms`.
    Ordre d'affichage (carnet et menu d'accusation) : alphabétique, donc
    volontairement différent de l'ordre des salles, pour que le grisage ne
-   suive pas la visite. */
+   suive pas la visite.
+   `history` : la vraie histoire de la pièce (site du château + visite vidéo),
+   lue via le sceau de la carte dans le carnet, comme la fiche des suspects.
+   Ton « archives de la maison », factuel, hors intrigue. Les cheminées sont
+   citées dans TOUTES les pièces qui en ont une : l'arme est le tisonnier du
+   salon, la fiche du salon ne doit pas être la seule à parler d'un foyer.
+   L'occupation de 1944 est évoquée sans nommer personne. */
 const pieces = [
-  { id: 'billiard-room',            name: 'Billiard Room',            isSolution: false },
-  { id: 'bonaparte-bedroom',        name: 'Bonaparte Bedroom',        isSolution: false },
-  { id: 'kitchen',                  name: 'Kitchen',                  isSolution: false },
-  { id: 'louis-xiv-bedroom',        name: 'Louis XIV Bedroom',        isSolution: false },
-  { id: 'marie-antoinette-bedroom', name: 'Marie-Antoinette Bedroom', isSolution: false },
-  { id: 'rotunda-bar',              name: 'Rotunda Bar',              isSolution: false },
-  { id: 'salon',                    name: 'Salon',                    isSolution: true  }, // scène du crime : aucune épreuve (RDC)
+  { id: 'billiard-room',            name: 'Billiard Room',            isSolution: false,
+    history: 'This was the dining room of the house. Through the hatch in the wall, a footman waited for the dishes on the kitchen side. The marble fireplace and the tall ceilings are original, and the house is still warmed through vents in the walls, a system as old as the building.' },
+  { id: 'bonaparte-bedroom',        name: 'Bonaparte Bedroom',        isSolution: false,
+    history: 'The middle room of the row: one door to Louis XIV, one to Marie-Antoinette. Its fireplace is younger than the house, marble faced with brick in the fashion of 1900. The window looks over the garden and the fire pit at the back.' },
+  { id: 'kitchen',                  name: 'Kitchen',                  isSolution: false,
+    history: 'The door beside this room was the servants’ entrance; the family came in by the stone steps at the back. The old hearth where every meal of the house was cooked still stands. A hatch in the wall opens onto the former dining room, so that dishes passed from cook to footman without either crossing the threshold.' },
+  { id: 'louis-xiv-bedroom',        name: 'Louis XIV Bedroom',        isSolution: false,
+    history: 'Named for the portrait of the Sun King on the wall. Original parquet, a black marble fireplace long out of use, and a window onto the main drive and the two lodges that mark the entrance to the estate. A small passage in the corner leads through to the next bedroom, as rooms were once built in a row.' },
+  { id: 'marie-antoinette-bedroom', name: 'Marie-Antoinette Bedroom', isSolution: false,
+    history: 'The largest suite of the house, named for the queen framed above the bed. A monumental fireplace, and furniture in the taste of Louis XV and Louis XVI. Its bathroom sits in the tower, directly above the bar.' },
+  { id: 'rotunda-bar',              name: 'Rotunda Bar',              isSolution: false,
+    history: 'The ground floor of the tower, most likely the master’s study before it became a bar. The tower rises three levels: a bathroom above, and an attic under the slates meant for a small library. During the war, the officers quartered here scratched their names into the window panes.' },
+  { id: 'salon',                    name: 'Salon',                    isSolution: true, // scène du crime : aucune épreuve (RDC)
+    history: 'The official entrance of the house opens here, up the stone steps that hug the rounded façade. Original parquet, mouldings all around, a monumental chandelier and the great marble fireplace. On the wall, the portrait of Count de Viry, who built this house in 1834 as a hunting retreat, still keeps an eye on his salon.' },
+];
+
+/* ---------- La vraie maison ----------
+   Histoire réelle du château (chateau-guillermo.com/fr/history + visite
+   vidéo), hors intrigue, affichée sur l'écran de résultat après le verdict :
+   lue une fois, quand le chrono est arrêté, sans ralentir la partie. Un
+   paragraphe par entrée. Le site écrit 1871 ; la bataille de Sedan est du
+   1er septembre 1870, d'où « 1870 » ici. */
+const houseHistory = [
+  'Built in 1834 by Count de Viry as a hunting retreat, under the name Château Haut Montvillers. In 1870 the French army held it while the battle of Sedan was fought in the valley below; it appears in the corner of a photograph of the battlefield.',
+  'In 1944 German officers were quartered here during the Battle of the Ardennes, and scratched their names into the window panes. A Parisian family bought it in 1952, posed proudly on the great steps, and left the floors of their own era behind.',
+  'In 2009 a Belgian family found it without heating, water or electricity, and brought it back to life. Since 2023 it has borne the name of the man who first believed in it: Guillaume.',
 ];
 
 /* ---------- Les six salles ----------
@@ -248,6 +292,10 @@ const pieces = [
                         est grisée dans le carnet une fois résolue
    - eliminates       : id de la carte écartée par chaque indice — jamais
                         affiché au joueur, à remplir pour vérifier la cohérence
+   - hints            : (facultatif) coups de pouce payants, dans l'ordre où
+                        ils se débloquent ; chacun ajoute
+                        CONFIG.hintPenaltySeconds au chrono et au temps final.
+                        Une salle sans `hints` n'affiche pas le bloc
 
    Indices « culprit » : six salles, six innocents écartés, le septième est
    le coupable (le notaire). Chaque indice contient un mot d'ancrage qui
@@ -289,6 +337,8 @@ const rooms = [
     inputLabel: 'The password',
     inputMode: 'text',
     answers: ['castle'],
+    // VO de l'indice : « Retourne les boules rouges et assemble les lettres du mot de passe. »
+    hints: ['Turn the red balls over. Each one hides a letter: gather them, put them in order, and you have the password.'],
     clues: {
       culprit: 'The floors were spotless. Not a speck of earth, not a blade of grass: the killer had not set foot in the garden all week.',
       weapon: 'All twelve billiard cues were on their rack, chalked and counted, when the alarm was raised. Not one had left it all evening.',
@@ -579,6 +629,11 @@ body[data-screen="home"] .main, body[data-screen="board"] .main { padding-bottom
   padding: 7px 10px; border: 1px solid rgba(176,141,76,.55); background: rgba(0,0,0,.28);
 }
 .topbar__timer.is-stopped { color: var(--paper); border-color: var(--wine); background: rgba(122,46,46,.3); }
+/* Éclat bordeaux quand un indice vient d'ajouter sa pénalité */
+@media (prefers-reduced-motion: no-preference) {
+  .topbar__timer.is-penalty { animation: penalty .9s ease-out; }
+  @keyframes penalty { 0%, 45% { color: var(--paper); border-color: var(--wine); background: rgba(122,46,46,.55); } }
+}
 
 /* ---------- Barre basse (mobile) : Dossier / Carnet ---------- */
 .tabbar {
@@ -747,6 +802,18 @@ select.input { appearance: auto; -webkit-appearance: menulist; padding-right: 36
 .carton__label { margin: 0 0 6px; font-size: .65rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); }
 .carton__text { margin: 0; font-family: var(--font-title); font-size: 1.06rem; line-height: 1.5; }
 .answer { margin-top: 22px; padding-top: 18px; border-top: 1px dashed #a89b7d; }
+/* Indices payants, sous le formulaire de réponse */
+.hints { margin-top: 22px; padding-top: 18px; border-top: 1px dashed #a89b7d; }
+.hints__title { font-size: 1.15rem; }
+.hints__help { margin: 4px 0 12px; font-size: .9rem; color: var(--ink-soft); }
+.hints__list:not(:empty) { margin-bottom: 14px; }
+.hints__done { margin: 0; font-family: var(--font-title); font-style: italic; color: var(--ink-soft); }
+.carton--hint { border-color: var(--sage); transform: none; }
+.carton--hint::before { content: ''; position: absolute; left: -1px; top: -1px; bottom: -1px; width: 4px; background: var(--sage); }
+.carton--hint .carton__label { color: var(--sage); }
+.confirm--hint { border-color: var(--ink); background: rgba(30,27,22,.05); }
+.confirm--hint p { color: var(--ink); }
+@media (prefers-reduced-motion: no-preference) { .carton--hint { animation: rise .45s ease-out both; } }
 @media (prefers-reduced-motion: no-preference) {
   .shake { animation: shake .4s; }
   @keyframes shake { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
@@ -806,6 +873,7 @@ select.input { appearance: auto; -webkit-appearance: menulist; padding-right: 36
 .file__name { font-size: 1.5rem; line-height: 1.1; }
 .file__tagline { margin: 16px 0 0; font-family: var(--font-title); font-style: italic; font-size: 1.05rem; line-height: 1.45; color: var(--wine); }
 .file__motive { margin: 12px 0 0; padding-top: 12px; border-top: 1px dashed #a89b7d; font-size: .95rem; line-height: 1.5; color: var(--ink); }
+.file__history { margin: 16px 0 0; font-size: .95rem; line-height: 1.5; color: var(--ink); }
 .file__label { display: block; margin-bottom: 2px; font-size: .62rem; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--sage); }
 .file__actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
 .file__actions .btn { flex: 1; }
@@ -952,8 +1020,13 @@ select.input { appearance: auto; -webkit-appearance: menulist; padding-right: 36
 .result__stats { display: grid; gap: 4px; margin: 18px 0 0; padding: 14px; background: rgba(18,33,28,.06); border: 1px dashed #a89b7d; }
 .result__stats dt { font-size: .68rem; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--sage); }
 .result__stats dd { margin: 0; font-size: 2.6rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.result__penalty { margin: 8px 0 0; font-size: .88rem; color: var(--ink-soft); }
 .result__code { margin-top: 22px; padding-top: 18px; border-top: 1px dashed #a89b7d; }
 .result__code h3 { font-size: 1.1rem; margin-bottom: 4px; }
+/* La vraie histoire du château, sous le verdict */
+.house { margin-top: 22px; padding: 22px 20px 20px; }
+.house__title { font-size: 1.35rem; }
+.house__text { margin: 10px 0 0; font-size: .95rem; line-height: 1.55; }
 .code {
   display: block; margin: 10px 0; padding: 12px;
   background: var(--bg); color: var(--brass-light);
@@ -1199,9 +1272,9 @@ function cardIcon(dir, id) {
 
 /* ---------- Stockage local ---------- */
 const KEY = {
-  progress: CONFIG.storagePrefix + 'progress',   // { team, crest, startedAt, finishedAt, solved, revealPending, result }
+  progress: CONFIG.storagePrefix + 'progress',   // { team, crest, startedAt, finishedAt, solved, hints: { roomId: n }, revealPending, result }
   cards:    CONFIG.storagePrefix + 'cards',      // { 'suspects/notary': true, ... } cartes barrées
-  results:  CONFIG.storagePrefix + 'results',    // [ { team, crest, seconds, correct, date, code }, ... ]
+  results:  CONFIG.storagePrefix + 'results',    // [ { team, crest, seconds, hints, correct, date, code }, ... ]
   board:    CONFIG.storagePrefix + 'board',      // [ code, ... ] résultats reçus par le maître du jeu
 };
 function load(key, fallback) {
@@ -1328,9 +1401,18 @@ function formatTime(ms) {
   const mm = String(m).padStart(2, '0'), ss = String(sec).padStart(2, '0');
   return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
+// Indices payants : demandés dans une salle, au total, et la pénalité qui en découle
+const hintsTaken = (room) => progress?.hints?.[room.id] || 0;
+const hintsTotal = () => Object.values(progress?.hints || {}).reduce((sum, n) => sum + n, 0);
+const penaltyMs  = () => hintsTotal() * CONFIG.hintPenaltySeconds * 1000;
+// Temps écoulé, pénalités comprises : le chrono affiché est celui qui compte
 function elapsedMs() {
   if (!progress?.startedAt) return 0;
-  return (progress.finishedAt || Date.now()) - progress.startedAt;
+  return (progress.finishedAt || Date.now()) - progress.startedAt + penaltyMs();
+}
+// Bref éclat du chrono quand une pénalité vient de s'ajouter
+function flashPenalty() {
+  el.timer.classList.remove('is-penalty'); void el.timer.offsetWidth; el.timer.classList.add('is-penalty');
 }
 function renderTimer() {
   el.timer.textContent = formatTime(elapsedMs());
@@ -1466,7 +1548,7 @@ function renderHomeCrest() {
   el.homeCrestName.textContent = name;
 }
 function startGame(team) {
-  progress = { team, crest: { ...homeCrest }, startedAt: Date.now(), finishedAt: null, solved: 0, revealPending: false, result: null };
+  progress = { team, crest: { ...homeCrest }, startedAt: Date.now(), finishedAt: null, solved: 0, hints: {}, revealPending: false, result: null };
   cardState = {};
   persist(KEY.progress, progress);
   persist(KEY.cards, cardState);
@@ -1533,6 +1615,65 @@ function renderAnswerForm(room) {
     <button type="submit" class="btn btn--ink btn--primary btn--block">${esc(t('answerButton'))}</button>
   </form>`;
 }
+/* ---------- Indices payants ----------
+   Une salle peut porter des `hints`, débloqués un par un dans l'ordre. Chaque
+   demande ajoute CONFIG.hintPenaltySeconds au chrono (voir elapsedMs) ; le
+   nombre demandé par salle vit dans progress.hints et survit donc à un
+   rafraîchissement. Le bloc n'apparaît que tant que la salle n'est pas résolue. */
+function renderHintCarton(text, n, total) {
+  const seconds = CONFIG.hintPenaltySeconds;
+  const label = total > 1 ? t('hintLabelN', { n, total, seconds }) : t('hintLabel', { seconds });
+  return `<blockquote class="carton carton--hint" tabindex="-1">
+    <p class="carton__label">${esc(label)}</p>
+    <p class="carton__text">${esc(text)}</p>
+  </blockquote>`;
+}
+function renderHints(room) {
+  const hints = room.hints || [];
+  if (!hints.length) return '';
+  const seconds = CONFIG.hintPenaltySeconds;
+  const taken = Math.min(hintsTaken(room), hints.length);
+  const left = hints.length - taken;
+  return `<section class="hints" id="hints" aria-labelledby="hints-title">
+    <h3 id="hints-title" class="hints__title">${esc(t('hintTitle'))}</h3>
+    <p class="hints__help">${esc(t('hintHelp', { seconds }))}</p>
+    <div class="hints__list">${hints.slice(0, taken).map((h, i) => renderHintCarton(h, i + 1, hints.length)).join('')}</div>
+    ${left ? `
+    <div class="confirm confirm--hint" id="hint-confirm" hidden>
+      <p>${esc(t('hintConfirmText', { seconds }))}</p>
+      <div class="confirm__actions">
+        <button type="button" class="btn btn--ink" id="btn-hint-no">${esc(t('hintConfirmNo'))}</button>
+        <button type="button" class="btn btn--ink btn--primary" id="btn-hint-yes">${esc(t('hintConfirmYes'))}</button>
+      </div>
+    </div>
+    <button type="button" class="btn btn--ink btn--block" id="btn-hint">${esc(t(taken ? 'hintAskAgain' : 'hintAsk', { seconds }))}</button>`
+    : `<p class="hints__done">${esc(t('hintExhausted'))}</p>`}
+  </section>`;
+}
+// Un seul écouteur délégué par rendu du bloc : demander, se rétracter, confirmer
+function wireHints(room) {
+  const box = $('#hints'); if (!box) return;
+  box.addEventListener('click', (e) => {
+    const btn = e.target.closest('button'); if (!btn) return;
+    const confirmBox = $('#hint-confirm', box), ask = $('#btn-hint', box);
+    if (btn.id === 'btn-hint')          { confirmBox.hidden = false; ask.hidden = true; $('#btn-hint-yes', box).focus(); }
+    else if (btn.id === 'btn-hint-no')  { confirmBox.hidden = true; ask.hidden = false; ask.focus(); }
+    else if (btn.id === 'btn-hint-yes') { takeHint(room); }
+  });
+}
+// Débloque l'indice suivant, applique la pénalité et re-rend le bloc (la réponse en cours de saisie est conservée)
+function takeHint(room) {
+  const taken = hintsTaken(room);
+  if (taken >= (room.hints || []).length) return;
+  progress.hints = { ...(progress.hints || {}), [room.id]: taken + 1 };
+  persist(KEY.progress, progress);
+  renderTimer(); flashPenalty();
+  $('#hints').outerHTML = renderHints(room);
+  wireHints(room);
+  const cartons = $$('.carton--hint', $('#hints'));
+  const last = cartons[cartons.length - 1];
+  if (last) { last.focus({ preventScroll: true }); last.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+}
 function renderReveal(room, index) {
   const last = index === rooms.length - 1;
   return `<section class="reveal" aria-labelledby="reveal-title">
@@ -1557,13 +1698,14 @@ function renderRoom(index) {
       ${renderMap(room)}
       <p class="ambiance">${esc(room.ambiance)}</p>
       <div class="cartons">${(room.cartons || []).map(renderCarton).join('')}</div>
-      ${solved ? renderReveal(room, index) : renderAnswerForm(room)}
+      ${solved ? renderReveal(room, index) : renderAnswerForm(room) + renderHints(room)}
     </article>`;
   wireMap(el.screens.room, room);
   if (solved) {
     $('#btn-continue').addEventListener('click', acknowledgeClues);
   } else {
     $('#answer-form').addEventListener('submit', (e) => onAnswerSubmit(e, room, index));
+    wireHints(room);
   }
 }
 // Repli propre si l'image du plan manque
@@ -1632,7 +1774,7 @@ function renderCluesByRoom() {
     </section>`).join('')}</div>`;
 }
 const SEAL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>';
-const hasFile = (card) => !!(card.tagline || card.motive);
+const hasFile = (card) => !!(card.tagline || card.motive || card.history);
 // Suspects et armes : une carte = un bouton qui la barre ; à côté, le sceau ouvre sa fiche
 // (frère, pas enfant : deux boutons imbriqués sont interdits).
 // Pièces : une simple <div>, jamais cliquable ; grisée et tamponnée « searched » quand sa salle est résolue.
@@ -1660,7 +1802,7 @@ function renderCardButton(axis, card) {
     </button>${seal}
   </div>`;
 }
-// Fiche d'une carte : portrait, clin d'œil, mobile, et le même barrage que sur la carte
+// Fiche d'une carte : portrait, clin d'œil, mobile (suspects) ou histoire (pièces), et le même barrage que sur la carte
 function openCardFile(axisDir, id) {
   const axis = AXES.find((a) => a.dir === axisDir);
   const card = axis && axis.list.find((c) => c.id === id);
@@ -1680,6 +1822,7 @@ function openCardFile(axisDir, id) {
       </div>
       ${card.tagline ? `<p class="file__tagline">${esc(card.tagline)}</p>` : ''}
       ${card.motive ? `<p class="file__motive"><span class="file__label">${esc(t('motiveLabel'))}</span>${esc(card.motive)}</p>` : ''}
+      ${card.history ? `<p class="file__history"><span class="file__label">${esc(t('historyLabel'))}</span>${esc(card.history)}</p>` : ''}
       <div class="file__actions">
         ${searched || !axis.clue ? '' : `<button type="button" class="btn btn--ink" id="card-dialog-strike">${esc(t(struck ? 'fileRestore' : 'fileCross'))}</button>`}
         <button type="button" class="btn btn--ink btn--primary" id="card-dialog-close">${esc(t('fileClose'))}</button>
@@ -1854,14 +1997,14 @@ function updateAccusationDefaults() {
 }
 function finishGame(accusation) {
   progress.finishedAt = Date.now();
-  const seconds = Math.floor((progress.finishedAt - progress.startedAt) / 1000);
+  const seconds = Math.floor(elapsedMs() / 1000);   // pénalités des indices comprises
   const verdicts = AXES.map((ax) => {
     const sol = solutionOf(ax);
     if (!sol) console.warn(`Aucune carte isSolution: true dans l'axe « ${ax.key} » : l'accusation ne peut pas être juste.`);
     return !!sol && sol.id === accusation[ax.key];
   });
   const correct = verdicts.every(Boolean);
-  const entry = { team: progress.team, crest: progress.crest, seconds, correct, accusation, date: new Date().toISOString() };
+  const entry = { team: progress.team, crest: progress.crest, seconds, hints: hintsTotal(), correct, accusation, date: new Date().toISOString() };
   entry.code = resultCode(entry);
   progress.result = entry;
   persist(KEY.progress, progress);
@@ -1971,6 +2114,7 @@ function renderResult() {
       ${revealLine}
       ${solutionLine}
       <dl class="result__stats"><dt>${esc(t('finalTime'))}</dt><dd>${formatTime(r.seconds * 1000)}</dd></dl>
+      ${r.hints ? `<p class="result__penalty">${esc(t(r.hints === 1 ? 'hintsSummaryOne' : 'hintsSummary', { n: r.hints, seconds: r.hints * CONFIG.hintPenaltySeconds }))}</p>` : ''}
       <section class="result__code" aria-labelledby="code-title">
         <h3 id="code-title">${esc(t('codeTitle'))}</h3>
         <p class="muted">${esc(t('codeHelp'))}</p>
@@ -1979,6 +2123,11 @@ function renderResult() {
         <p class="feedback" id="copy-feedback" role="status" aria-live="polite"></p>
       </section>
     </article>
+    <section class="sheet house" aria-labelledby="house-title">
+      <p class="kicker">${esc(t('houseKicker'))}</p>
+      <h3 id="house-title" class="house__title">${esc(t('houseTitle'))}</h3>
+      ${houseHistory.map((para) => `<p class="house__text">${esc(para)}</p>`).join('')}
+    </section>
     <section class="board" aria-labelledby="board-title">
       <h3 id="board-title" class="board__title">${esc(t('boardTitle'))}</h3>
       <p class="board__note">${esc(t('boardNote'))}</p>
@@ -2197,7 +2346,7 @@ const DEV = (() => {
   // Garantit une partie en cours (nom saisi sur l'accueil, sinon « Dev team ») et quitte un éventuel #board
   const ensureGame = () => {
     if (!progress) {
-      progress = { team: el.teamInput.value.trim() || 'Dev team', crest: { ...homeCrest }, startedAt: Date.now(), finishedAt: null, solved: 0, revealPending: false, result: null };
+      progress = { team: el.teamInput.value.trim() || 'Dev team', crest: { ...homeCrest }, startedAt: Date.now(), finishedAt: null, solved: 0, hints: {}, revealPending: false, result: null };
       cardState = {}; persist(KEY.cards, cardState);
     }
     progress.finishedAt = null; progress.result = null;

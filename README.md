@@ -24,16 +24,18 @@ cluedo/
 Tout est dans le premier bloc `<script>` de `index.html` :
 
 - `CONFIG` : réglages (dossier des cartes, plan par défaut, taille du classement,
-  `revealSolutionOnFailure`).
+  `revealSolutionOnFailure`, `hintPenaltySeconds`).
 - `UI` : tous les textes de l'interface, dont la lettre d'accueil (`UI.welcome`)
   et les libellés du blason (`UI.crest`).
 - `suspects`, `weapons`, `pieces` : 7 cartes par axe, `{ id, name, isSolution }`.
   Mettre `isSolution: true` sur **une** carte par axe pour définir la solution.
   Les suspects portent en plus `tagline` (clin d'œil à la vie de la boîte),
   `motive` (la raison qui aurait pu pousser au meurtre) et, pour le coupable,
-  `reveal` (phrase affichée sur le verdict réussi). Toute carte qui porte un
-  `tagline` ou un `motive` reçoit un sceau dans son coin, dans le carnet : il
-  ouvre sa fiche (portrait, clin d'œil, mobile, barrer / restaurer).
+  `reveal` (phrase affichée sur le verdict réussi). Les pièces portent
+  `history` (la vraie histoire de la pièce, hors intrigue). Toute carte qui
+  porte un `tagline`, un `motive` ou une `history` reçoit un sceau dans son
+  coin, dans le carnet : il ouvre sa fiche (portrait, clin d'œil, mobile ou
+  histoire, barrer / restaurer pour les suspects et les armes).
 - `pieces` suit une règle à part : **pas d'indice « room »**. Les sept cartes
   sont les six salles d'épreuve (même `id` que dans `rooms`) plus une pièce
   sans épreuve, la scène du crime (`isSolution: true`). Les cartes pièces ne
@@ -44,11 +46,28 @@ Tout est dans le premier bloc `<script>` de `index.html` :
   pièces sans épreuve, solution sur une salle d'épreuve, cartes dans l'ordre
   des salles). L'ordre du tableau est l'ordre d'affichage : le garder
   alphabétique, jamais dans l'ordre de visite.
+- `houseHistory` : la vraie histoire du château, un paragraphe par entrée,
+  affichée sur l'écran de résultat sous le verdict (kicker et titre dans
+  `UI.houseKicker` / `UI.houseTitle`).
 - `rooms` : les 6 salles. Chaque salle a `name`, `floor`, `ambiance`, `map`,
-  `cartons`, `inputLabel`, `inputMode`, `answers`, `clues`, `eliminates`.
-  `clues` et `eliminates` n'ont que deux axes, `culprit` et `weapon`.
-  Les réponses sont comparées après normalisation (minuscules, sans accents,
-  sans espaces). `eliminates` n'est jamais affiché au joueur.
+  `cartons`, `inputLabel`, `inputMode`, `answers`, `clues`, `eliminates` et,
+  au choix, `hints`. `clues` et `eliminates` n'ont que deux axes, `culprit`
+  et `weapon`. Les réponses sont comparées après normalisation (minuscules,
+  sans accents, sans espaces). `eliminates` n'est jamais affiché au joueur.
+
+### Indices payants
+
+Une salle peut porter `hints`, un tableau de coups de pouce dans l'ordre où
+ils se débloquent. Sous le formulaire de réponse, un bloc « Need a hand? »
+propose « Ask for a hint (+30 s) » ; l'équipe confirme, l'indice s'affiche
+sur un carton vert-de-gris et reste visible jusqu'à la résolution de la
+salle. Chaque indice ajoute `CONFIG.hintPenaltySeconds` (30 s) au chrono,
+immédiatement et de façon visible (le chrono s'éclaire en bordeaux), donc au
+temps final et au code de résultat. Le nombre d'indices demandés par salle
+est mémorisé dans `chateau.progress` (`hints`) et survit à un
+rafraîchissement ; l'écran de résultat rappelle la pénalité totale. Une salle
+sans `hints` n'affiche pas le bloc. Textes dans `UI.hint*` et
+`UI.hintsSummary*`.
 
 ### Blason d'équipe
 
@@ -165,7 +184,8 @@ reste marqué `// LEADERBOARD HOOK` dans `saveResult()`.
 ## Stockage local
 
 - `chateau.progress` : équipe, blason choisi (`crest`), timestamps de départ et de
-  fin, nombre de salles résolues, résultat. Une sauvegarde antérieure qui n'a
+  fin, nombre de salles résolues, indices demandés par salle (`hints`,
+  `{ id de salle: nombre }`), résultat. Une sauvegarde antérieure qui n'a
   qu'une graine (`crestSeed`) est convertie au chargement, à l'identique.
 - `chateau.cards` : cartes barrées par le joueur. Les pièces grisées ne sont pas
   stockées : elles se déduisent du nombre de salles résolues.
