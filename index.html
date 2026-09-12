@@ -973,7 +973,8 @@ select.input { appearance: auto; -webkit-appearance: menulist; padding-right: 36
 .letter p:last-child { margin-bottom: 0; font-style: italic; }
 
 .enrol {
-  position: relative; margin-top: 30px; padding: 24px 18px 22px;
+  --pad-x: 18px;
+  position: relative; margin-top: 30px; padding: 24px var(--pad-x) 22px;
   border: 1px solid rgba(176,141,76,.55);
   background: linear-gradient(180deg, rgba(232,223,200,.05), rgba(0,0,0,.28));
 }
@@ -983,9 +984,27 @@ select.input { appearance: auto; -webkit-appearance: menulist; padding-right: 36
 .enrol__title { text-align: center; font-size: 1.35rem; color: var(--brass-light); margin-bottom: 14px; }
 .enrol .field label { color: rgba(232,223,200,.8); }
 .enrol .actions { display: grid; gap: 10px; margin-top: 14px; }
+/* Aperçu du blason : écu, nom d'équipe et blasonnement (les choix en clair) */
 .crest { display: grid; place-items: center; gap: 8px; margin: 6px 0 20px; }
 .crest svg { width: 132px; height: auto; filter: drop-shadow(0 8px 12px rgba(0,0,0,.55)); }
-.crest__name { min-height: 1.2em; font-family: var(--font-title); font-size: .8rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; text-align: center; color: var(--brass-light); overflow-wrap: anywhere; }
+.crest__text { display: grid; gap: 3px; min-width: 0; text-align: center; }
+.crest__name { min-height: 1.2em; font-family: var(--font-title); font-size: .8rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--brass-light); overflow-wrap: anywhere; }
+.crest__name.is-empty { color: rgba(232,223,200,.45); }
+.crest__blazon { font-family: var(--font-title); font-style: italic; font-size: .9rem; line-height: 1.35; color: rgba(232,223,200,.72); }
+/* Mobile : l'aperçu devient un bandeau collé en haut de l'écran (écu à gauche, texte à droite) pour rester
+   visible pendant qu'on fait défiler les options ; il suit le formulaire et libère l'écran une fois celui-ci passé */
+@media (max-width: 639px) {
+  .crest {
+    position: sticky; top: 0; z-index: 4;
+    grid-template-columns: auto minmax(0, 1fr); place-items: center start; gap: 14px;
+    margin: 0 calc(-1 * var(--pad-x)) 18px; padding: calc(10px + env(safe-area-inset-top)) var(--pad-x) 12px;
+    background: rgba(11,21,17,.94); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(176,141,76,.45);
+  }
+  .crest svg { width: 84px; filter: drop-shadow(0 5px 8px rgba(0,0,0,.55)); }
+  .crest__text { text-align: left; }
+  .crest__name { font-size: .86rem; }
+}
 
 /* ---------- Personnalisation du blason ---------- */
 /* Groupes d'options : fieldset sans bordure, légende à gauche, valeur choisie à droite */
@@ -1372,13 +1391,17 @@ select.input { appearance: auto; -webkit-appearance: menulist; padding-right: 36
 
       <form class="enrol" id="home-form" novalidate>
         <h2 class="enrol__title" data-ui="registerTitle"></h2>
+        <!-- Aperçu du blason ; sur mobile, bandeau collé en haut de l'écran pendant qu'on fait défiler les options -->
         <div class="crest" id="home-crest" aria-hidden="true">
           <div id="home-crest-svg"></div>
-          <div class="crest__name" id="home-crest-name"></div>
+          <div class="crest__text">
+            <div class="crest__name" id="home-crest-name"></div>
+            <div class="crest__blazon" id="home-crest-blazon"></div>
+          </div>
         </div>
         <div class="field">
           <label for="team-name" data-ui="teamLabel"></label>
-          <input class="input" id="team-name" name="team" type="text" maxlength="40" autocomplete="off" autocapitalize="words" enterkeyhint="go" required>
+          <input class="input" id="team-name" name="team" type="text" maxlength="40" autocomplete="off" autocapitalize="words" enterkeyhint="done" required>
         </div>
         <!-- Personnalisation du blason : les boutons radio sont générés par JS depuis CREST -->
         <fieldset class="opt">
@@ -1585,7 +1608,7 @@ const el = {
   notebook: $('#notebook'),
   tabbar: $('#tabbar'), tabCase: $('#tab-case'), tabNotebook: $('#tab-notebook'), tabBadge: $('#tab-badge'),
   homeForm: $('#home-form'), teamInput: $('#team-name'), homeFeedback: $('#home-feedback'),
-  homeCrestSvg: $('#home-crest-svg'), homeCrestName: $('#home-crest-name'),
+  homeCrestSvg: $('#home-crest-svg'), homeCrestName: $('#home-crest-name'), homeCrestBlazon: $('#home-crest-blazon'),
   homeBoard: $('#home-board'), homeBoardTable: $('#home-board-table'),
   letter: $('#letter'),
   mapDialog: $('#map-dialog'),
@@ -1847,7 +1870,10 @@ function renderHomeCrest() {
   // Valeurs choisies en clair, puis le blason
   $$('.opt__value', form).forEach((node) => { node.textContent = crestLabel(node.dataset.crestValue, homeCrest[node.dataset.crestValue]); });
   el.homeCrestSvg.innerHTML = crestSVG(homeCrest, name);
-  el.homeCrestName.textContent = name;
+  // Sans nom, le mot « Équipe » tient la place pour que le bandeau garde sa hauteur pendant la saisie
+  el.homeCrestName.textContent = name || t('teamKicker');
+  el.homeCrestName.classList.toggle('is-empty', !name);
+  el.homeCrestBlazon.textContent = CREST_KEYS.map((k) => crestLabel(k, homeCrest[k])).join(' · ');
 }
 function startGame(team) {
   progress = { team, crest: { ...homeCrest }, startedAt: Date.now(), finishedAt: null, solved: 0, hints: {}, revealPending: false, result: null };
@@ -2584,6 +2610,8 @@ function wireStatic() {
     renderHomeCrest();
   });
   $('#btn-surprise').addEventListener('click', () => { homeCrest = randomCrest(); renderHomeCrest(); });
+  // Enter dans le nom ne lance pas la partie : on referme juste le clavier pour laisser personnaliser le blason
+  el.teamInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); el.teamInput.blur(); } });
   el.homeForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const team = el.teamInput.value.trim();
