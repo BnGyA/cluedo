@@ -30,152 +30,223 @@ const CONFIG = {
                                     // (false par défaut : évite les fuites entre équipes)
   leaderboardSize: 20,              // nombre de lignes du classement local
   hintPenaltySeconds: 180,          // secondes ajoutées au chrono par indice demandé (voir `hints` des salles)
+  // Langues proposées (code → nom affiché dans sa propre langue) et langue de repli.
+  // Choix : ?lang=xx dans l'URL, sinon le dernier choix mémorisé (chateau.lang), sinon la langue du navigateur.
+  languages: { en: 'English', fr: 'Français' },
+  defaultLang: 'en',
 };
 
 /* ---------- Textes de l'interface ----------
-   Les accolades {n} sont remplacées à l'affichage. */
+   Deux langues. Chaque texte est soit une chaîne (identique dans les deux
+   langues : « Château Guillermo », « # »), soit un objet { en: '…', fr: '…' }.
+   La règle vaut pour tout ce bloc, cartes et salles comprises : au chargement,
+   localize() (script principal) remplace chaque { en, fr } par la langue
+   choisie. Une traduction absente retombe sur l'anglais.
+   Les accolades {n} sont remplacées à l'affichage ; {n|lc} donne la même
+   valeur avec l'initiale en minuscule (« Le Notaire » → « le Notaire »,
+   pour les articles français au milieu d'une phrase).
+   Français : les espaces avant ? ! : ; » et après « sont rendus insécables
+   à l'affichage (frTypography, script principal), inutile de les taper. */
 const UI = {
-  kicker: 'A murder mystery at the château',
+  kicker: { en: 'A murder mystery at the château', fr: 'Une enquête criminelle au château' },
   title: 'Château Guillermo',
+  pageTitle: { en: 'Château Guillermo — The Investigation', fr: 'Château Guillermo — L’Enquête' },
+  pageDescription: { en: 'A murder mystery investigation at Château Guillermo.', fr: 'Une enquête criminelle au Château Guillermo.' },
+  langLabel: { en: 'Language', fr: 'Langue' },         // intitulé du sélecteur de langue (accueil)
   // Lettre d'accueil — texte exact, un paragraphe par entrée
-  welcome: [
-    'Dear Detective,',
-    'A crime has been committed at Château Guillermo. The victim demands justice, and you alone can unmask the culprit. Six challenges are hidden throughout the manor. Solve them: each will earn you clues from the chief detective. By cross-referencing your clues, discover who committed the crime, with what weapon, and in which room.',
-    'Time is running out. Happy investigating.',
-  ],
-  registerTitle: 'Register your team',
-  teamLabel: 'Team name',
-  teamPlaceholder: 'e.g. The Bordeaux Bloodhounds',
-  teamRequired: 'Give your team a name before you begin.',
-  start: 'Start the investigation',
-  crestAlt: 'Coat of arms of team {team}',
+  welcome: {
+    en: [
+      'Dear Detective,',
+      'A crime has been committed at Château Guillermo. The victim demands justice, and you alone can unmask the culprit. Six challenges are hidden throughout the manor. Solve them: each will earn you clues from the chief detective. By cross-referencing your clues, discover who committed the crime, with what weapon, and in which room.',
+      'Time is running out. Happy investigating.',
+    ],
+    fr: [
+      'Cher détective,',
+      'Un crime a été commis au Château Guillermo. La victime réclame justice, et vous seul pouvez démasquer le coupable. Six épreuves sont dissimulées dans la demeure. Résolvez-les : chacune vous vaudra des indices du commissaire. En recoupant vos indices, découvrez qui a commis le crime, avec quelle arme, et dans quelle pièce.',
+      'Le temps presse. Bonne enquête.',
+    ],
+  },
+  registerTitle: { en: 'Register your team', fr: 'Inscrivez votre équipe' },
+  teamLabel: { en: 'Team name', fr: 'Nom de l’équipe' },
+  teamPlaceholder: { en: 'e.g. The Bordeaux Bloodhounds', fr: 'ex. Les Limiers de Bordeaux' },
+  teamRequired: { en: 'Give your team a name before you begin.', fr: 'Donnez un nom à votre équipe avant de commencer.' },
+  start: { en: 'Start the investigation', fr: 'Commencer l’enquête' },
+  crestAlt: { en: 'Coat of arms of team {team}', fr: 'Blason de l’équipe {team}' },
   // Personnalisation du blason (les ids correspondent aux clés de CREST)
   crest: {
-    field: 'Field colour', second: 'Second colour', partition: 'Pattern', symbol: 'Emblem', metal: 'Metal',
-    surprise: 'Surprise me',
-    tinctures:  { wine: 'Wine', forest: 'Forest', navy: 'Navy', plum: 'Plum', ink: 'Ink', chestnut: 'Chestnut', sage: 'Sage', amber: 'Amber' },
-    metals:     { gold: 'Gold', silver: 'Silver' },
-    partitions: { plain: 'Plain', pale: 'Pale', fess: 'Fess', bend: 'Bend', chevron: 'Chevron', quarterly: 'Quarterly' },
-    symbols:    { tower: 'Tower', key: 'Key', fleurDeLis: 'Fleur-de-lis', sword: 'Sword', crown: 'Crown', star: 'Star', crescent: 'Crescent', magnifier: 'Magnifying glass', cinquefoil: 'Cinquefoil', hourglass: 'Hourglass' },
+    field: { en: 'Field colour', fr: 'Couleur du champ' },
+    second: { en: 'Second colour', fr: 'Seconde couleur' },
+    partition: { en: 'Pattern', fr: 'Motif' },
+    symbol: { en: 'Emblem', fr: 'Emblème' },
+    metal: { en: 'Metal', fr: 'Métal' },
+    surprise: { en: 'Surprise me', fr: 'Surprenez-moi' },
+    tinctures: {
+      wine: { en: 'Wine', fr: 'Bordeaux' }, forest: { en: 'Forest', fr: 'Forêt' }, navy: { en: 'Navy', fr: 'Marine' }, plum: { en: 'Plum', fr: 'Prune' },
+      ink: { en: 'Ink', fr: 'Encre' }, chestnut: { en: 'Chestnut', fr: 'Châtaigne' }, sage: { en: 'Sage', fr: 'Sauge' }, amber: { en: 'Amber', fr: 'Ambre' },
+    },
+    metals: { gold: { en: 'Gold', fr: 'Or' }, silver: { en: 'Silver', fr: 'Argent' } },
+    partitions: {
+      plain: { en: 'Plain', fr: 'Plein' }, pale: { en: 'Pale', fr: 'Pal' }, fess: { en: 'Fess', fr: 'Fasce' },
+      bend: { en: 'Bend', fr: 'Bande' }, chevron: 'Chevron', quarterly: { en: 'Quarterly', fr: 'Écartelé' },
+    },
+    symbols: {
+      tower: { en: 'Tower', fr: 'Tour' }, key: { en: 'Key', fr: 'Clé' }, fleurDeLis: { en: 'Fleur-de-lis', fr: 'Fleur de lys' },
+      sword: { en: 'Sword', fr: 'Épée' }, crown: { en: 'Crown', fr: 'Couronne' }, star: { en: 'Star', fr: 'Étoile' },
+      crescent: { en: 'Crescent', fr: 'Croissant' }, magnifier: { en: 'Magnifying glass', fr: 'Loupe' },
+      cinquefoil: { en: 'Cinquefoil', fr: 'Quintefeuille' }, hourglass: { en: 'Hourglass', fr: 'Sablier' },
+    },
   },
-  timerLabel: 'Elapsed time',
-  teamKicker: 'Team',
-  tabCase: 'Case',
-  tabNotebook: 'My notebook',
-  caseFile: 'Case file',
-  challengeOf: 'Challenge {n} of {total}',
-  mapAlt: 'Map of the {floor}, {room} highlighted',
-  mapEnlarge: 'Enlarge the map',
-  mapClose: 'Close',
-  mapHint: 'Drag sideways to explore the plan. Pinch to zoom.',
-  answerLabel: 'Your answer',
-  answerButton: 'Submit to the chief detective',
-  emptyAnswer: 'Write an answer first.',
-  wrongAnswer: 'The chief detective shakes his head. That is not it. Look again.',
+  timerLabel: { en: 'Elapsed time', fr: 'Temps écoulé' },
+  teamKicker: { en: 'Team', fr: 'Équipe' },
+  tabbarLabel: { en: 'Investigation', fr: 'Enquête' },   // intitulé (aria) de la barre basse mobile
+  tabCase: { en: 'Case', fr: 'Dossier' },
+  tabNotebook: { en: 'My notebook', fr: 'Mon carnet' },
+  caseFile: { en: 'Case file', fr: 'Dossier d’enquête' },
+  challengeOf: { en: 'Challenge {n} of {total}', fr: 'Épreuve {n} sur {total}' },
+  mapAlt: { en: 'Map of the {floor}, {room} highlighted', fr: 'Plan du {floor|lc}, {room} en surbrillance' },
+  mapEnlarge: { en: 'Enlarge the map', fr: 'Agrandir le plan' },
+  mapClose: { en: 'Close', fr: 'Fermer' },
+  mapHint: { en: 'Drag sideways to explore the plan. Pinch to zoom.', fr: 'Faites glisser pour parcourir le plan. Pincez pour zoomer.' },
+  answerLabel: { en: 'Your answer', fr: 'Votre réponse' },
+  answerButton: { en: 'Submit to the chief detective', fr: 'Soumettre au commissaire' },
+  emptyAnswer: { en: 'Write an answer first.', fr: 'Écrivez d’abord une réponse.' },
+  wrongAnswer: { en: 'The chief detective shakes his head. That is not it. Look again.', fr: 'Le commissaire secoue la tête. Ce n’est pas ça. Cherchez encore.' },
   // Indices payants d'une salle (champ `hints` de `rooms`) : {penalty} et {penaltyShort} =
   // CONFIG.hintPenaltySeconds en toutes lettres (« 3 minutes ») et en abrégé (« 3 min »), voir formatPenalty
-  hintTitle: 'Need a hand?',
-  hintHelp: 'The chief detective can put you on the right track, at a price: every hint adds {penalty} to your final time.',
-  hintAsk: 'Ask for a hint (+{penaltyShort})',
-  hintAskAgain: 'Ask for another hint (+{penaltyShort})',
-  hintConfirmText: 'This adds {penalty} to your final time. Ask anyway?',
-  hintConfirmYes: 'Yes, I need it',
-  hintConfirmNo: 'Not yet',
-  hintLabel: 'Hint from the chief detective · +{penaltyShort}',
-  hintLabelN: 'Hint {n} of {total} · +{penaltyShort}',
-  hintExhausted: 'The chief detective has nothing more to add.',
-  revealTitle: 'Word from the chief detective',
-  revealIntro: 'Well played. Two clues have been added to your notebook.',
+  hintTitle: { en: 'Need a hand?', fr: 'Un coup de pouce ?' },
+  hintHelp: {
+    en: 'The chief detective can put you on the right track, at a price: every hint adds {penalty} to your final time.',
+    fr: 'Le commissaire peut vous mettre sur la voie, à un prix : chaque indice ajoute {penalty} à votre temps final.',
+  },
+  hintAsk: { en: 'Ask for a hint (+{penaltyShort})', fr: 'Demander un indice (+{penaltyShort})' },
+  hintAskAgain: { en: 'Ask for another hint (+{penaltyShort})', fr: 'Demander un autre indice (+{penaltyShort})' },
+  hintConfirmText: { en: 'This adds {penalty} to your final time. Ask anyway?', fr: 'Cela ajoute {penalty} à votre temps final. Demander quand même ?' },
+  hintConfirmYes: { en: 'Yes, I need it', fr: 'Oui, j’en ai besoin' },
+  hintConfirmNo: { en: 'Not yet', fr: 'Pas encore' },
+  hintLabel: { en: 'Hint from the chief detective · +{penaltyShort}', fr: 'Indice du commissaire · +{penaltyShort}' },
+  hintLabelN: { en: 'Hint {n} of {total} · +{penaltyShort}', fr: 'Indice {n} sur {total} · +{penaltyShort}' },
+  hintExhausted: { en: 'The chief detective has nothing more to add.', fr: 'Le commissaire n’a rien à ajouter.' },
+  // Unités de la pénalité en toutes lettres (formatPenalty) ; les abrégés « min » et « s » sont communs aux deux langues
+  minute: 'minute', minutes: 'minutes',
+  second: { en: 'second', fr: 'seconde' }, seconds: { en: 'seconds', fr: 'secondes' },
+  revealTitle: { en: 'Word from the chief detective', fr: 'Le mot du commissaire' },
+  revealIntro: { en: 'Well played. Two clues have been added to your notebook.', fr: 'Bien joué. Deux indices ont été ajoutés à votre carnet.' },
   // Affiché sous les indices : la salle résolue est grisée dans le carnet (voir `pieces`)
-  revealRoom: 'One more thing. The {room} has been searched from top to bottom: nothing happened here. It is greyed out in your notebook.',
-  nextRoom: 'Continue to the next room',
-  toAccusation: 'Proceed to the final accusation',
-  axisCulprit: 'Culprit',
-  axisWeapon: 'Weapon',
-  axisRoom: 'Room',
-  notebookTitle: 'Detective’s notebook',
-  cluesTitle: 'Clues collected',
-  cluesEmpty: 'No clues yet. Solve the first challenge to receive some.',
-  cardsTitle: 'The cards',
-  cardsHelp: 'Tap a suspect or a weapon to cross it out, tap again to restore it. The rooms take care of themselves: each one greys out once its challenge is solved, because the crime did not happen there.',
+  revealRoom: {
+    en: 'One more thing. The {room} has been searched from top to bottom: nothing happened here. It is greyed out in your notebook.',
+    fr: 'Une chose encore. {room} : fouille complète, du plancher au plafond, sans résultat. Le crime n’a pas eu lieu ici. La pièce est grisée dans votre carnet.',
+  },
+  nextRoom: { en: 'Continue to the next room', fr: 'Passer à la pièce suivante' },
+  toAccusation: { en: 'Proceed to the final accusation', fr: 'Passer à l’accusation finale' },
+  axisCulprit: { en: 'Culprit', fr: 'Coupable' },
+  axisWeapon: { en: 'Weapon', fr: 'Arme' },
+  axisRoom: { en: 'Room', fr: 'Pièce' },
+  notebookTitle: { en: 'Detective’s notebook', fr: 'Carnet du détective' },
+  cluesTitle: { en: 'Clues collected', fr: 'Indices recueillis' },
+  cluesEmpty: { en: 'No clues yet. Solve the first challenge to receive some.', fr: 'Aucun indice pour l’instant. Résolvez la première épreuve pour en recevoir.' },
+  cardsTitle: { en: 'The cards', fr: 'Les cartes' },
+  cardsHelp: {
+    en: 'Tap a suspect or a weapon to cross it out, tap again to restore it. The rooms take care of themselves: each one greys out once its challenge is solved, because the crime did not happen there.',
+    fr: 'Touchez un suspect ou une arme pour le barrer, touchez à nouveau pour le rétablir. Les pièces s’occupent d’elles-mêmes : chacune se grise une fois son épreuve résolue, puisque le crime n’a pas eu lieu là.',
+  },
   groupSuspects: 'Suspects',
   // Fiche d'une carte (sceau sur la carte) : clin d'œil + mobile
-  fileOpen: 'Open the file of {name}',
-  fileKicker: { suspects: 'Suspect file', weapons: 'Weapon file', pieces: 'Room file' },
-  motiveLabel: 'Motive',
-  historyLabel: 'History',         // fiche d'une pièce (champ `history` de `pieces`)
-  fileCross: 'Cross out',
-  fileRestore: 'Restore',
-  fileClose: 'Close',
-  groupWeapons: 'Weapons',
-  groupRooms: 'Rooms',
-  remaining: '{n} of {total} left',
-  eliminated: 'eliminated',
-  searched: 'searched',            // tampon des pièces grisées par l'app (salle d'épreuve résolue)
-  resetCards: 'Reset my cards',
-  resetConfirm: 'Restore every crossed-out card?',
-  abandon: 'Abandon this investigation',
-  abandonConfirm: 'Abandon the investigation? Progress and clock will be lost.',
+  fileOpen: { en: 'Open the file of {name}', fr: 'Ouvrir la fiche : {name}' },
+  fileKicker: {
+    suspects: { en: 'Suspect file', fr: 'Fiche suspect' },
+    weapons: { en: 'Weapon file', fr: 'Fiche arme' },
+    pieces: { en: 'Room file', fr: 'Fiche pièce' },
+  },
+  motiveLabel: { en: 'Motive', fr: 'Mobile' },
+  historyLabel: { en: 'History', fr: 'Histoire' },         // fiche d'une pièce (champ `history` de `pieces`)
+  fileCross: { en: 'Cross out', fr: 'Barrer' },
+  fileRestore: { en: 'Restore', fr: 'Rétablir' },
+  fileClose: { en: 'Close', fr: 'Fermer' },
+  groupWeapons: { en: 'Weapons', fr: 'Armes' },
+  groupRooms: { en: 'Rooms', fr: 'Pièces' },
+  remaining: { en: '{n} of {total} left', fr: 'reste {n} sur {total}' },
+  // Tampons : sans accord de genre en français (suspects, armes et pièces des deux genres)
+  eliminated: { en: 'eliminated', fr: 'hors de cause' },
+  searched: { en: 'searched', fr: 'R.A.S.' },            // tampon des pièces grisées par l'app (salle d'épreuve résolue)
+  resetCards: { en: 'Reset my cards', fr: 'Réinitialiser mes cartes' },
+  resetConfirm: { en: 'Restore every crossed-out card?', fr: 'Rétablir toutes les cartes barrées ?' },
+  abandon: { en: 'Abandon this investigation', fr: 'Abandonner cette enquête' },
+  abandonConfirm: { en: 'Abandon the investigation? Progress and clock will be lost.', fr: 'Abandonner l’enquête ? La progression et le chrono seront perdus.' },
   // Écran de résultat : la vraie histoire du château (voir `houseHistory`)
-  houseKicker: 'Beyond the fiction',
-  houseTitle: 'The real château',
-  accusationKicker: 'Final accusation',
-  accusationTitle: 'Name the guilty party',
-  accusationLead: 'You hold every clue the chief detective had to give. Cross-reference them, check your notebook, then make your accusation. The clock stops the moment you do.',
-  choose: '— Choose —',
-  autoHint: 'Only one card left in your notebook: preselected for you.',
-  accuse: 'Make the accusation',
-  accuseIncomplete: 'Choose a culprit, a weapon and a room.',
-  accuseConfirmText: 'This stops the clock. Are you certain?',
-  accuseConfirmYes: 'Yes, I accuse',
-  accuseConfirmNo: 'Not yet',
+  houseKicker: { en: 'Beyond the fiction', fr: 'Au-delà de la fiction' },
+  houseTitle: { en: 'The real château', fr: 'Le vrai château' },
+  accusationKicker: { en: 'Final accusation', fr: 'Accusation finale' },
+  accusationTitle: { en: 'Name the guilty party', fr: 'Désignez le coupable' },
+  accusationLead: {
+    en: 'You hold every clue the chief detective had to give. Cross-reference them, check your notebook, then make your accusation. The clock stops the moment you do.',
+    fr: 'Vous détenez tous les indices que le commissaire avait à donner. Recoupez-les, vérifiez votre carnet, puis portez votre accusation. Le chrono s’arrête à cet instant.',
+  },
+  choose: { en: '— Choose —', fr: '— Choisir —' },
+  autoHint: { en: 'Only one card left in your notebook: preselected for you.', fr: 'Une seule carte restante dans votre carnet : présélectionnée pour vous.' },
+  accuse: { en: 'Make the accusation', fr: 'Porter l’accusation' },
+  accuseIncomplete: { en: 'Choose a culprit, a weapon and a room.', fr: 'Choisissez un coupable, une arme et une pièce.' },
+  accuseConfirmText: { en: 'This stops the clock. Are you certain?', fr: 'Cela arrête le chrono. Êtes-vous certains ?' },
+  accuseConfirmYes: { en: 'Yes, I accuse', fr: 'Oui, j’accuse' },
+  accuseConfirmNo: { en: 'Not yet', fr: 'Pas encore' },
   verdictKicker: 'Verdict',
-  verdictSuccess: 'Case closed.',
-  verdictFailure: 'The culprit walks free.',
-  verdictSuccessText: 'Team {team} unmasked {culprit}, with {weapon}, in the {room}. Justice is served.',
-  verdictFailureText: 'Team {team} accused {culprit}, with {weapon}, in the {room}. The chief detective is not convinced.',
-  solutionWas: 'The truth: {culprit}, with {weapon}, in the {room}.',
-  finalTime: 'Final time',
+  verdictSuccess: { en: 'Case closed.', fr: 'Affaire classée.' },
+  verdictFailure: { en: 'The culprit walks free.', fr: 'Le coupable court toujours.' },
+  // Le nom de la pièce n'a pas d'article en français (« Salon », « Cuisine ») : il est posé après deux-points
+  verdictSuccessText: {
+    en: 'Team {team} unmasked {culprit}, with {weapon}, in the {room}. Justice is served.',
+    fr: 'L’équipe {team} a démasqué {culprit|lc}, avec {weapon|lc}. Lieu du crime : {room}. Justice est faite.',
+  },
+  verdictFailureText: {
+    en: 'Team {team} accused {culprit}, with {weapon}, in the {room}. The chief detective is not convinced.',
+    fr: 'L’équipe {team} a accusé {culprit|lc}, avec {weapon|lc}. Lieu désigné : {room}. Le commissaire n’est pas convaincu.',
+  },
+  solutionWas: { en: 'The truth: {culprit}, with {weapon}, in the {room}.', fr: 'La vérité : {culprit|lc}, avec {weapon|lc}. Lieu du crime : {room}.' },
+  finalTime: { en: 'Final time', fr: 'Temps final' },
   // Sous le temps final, seulement si l'équipe a demandé des indices
-  hintsSummary: 'Including {penalty} of penalty for {n} hints.',
-  hintsSummaryOne: 'Including {penalty} of penalty for one hint.',
+  hintsSummary: { en: 'Including {penalty} of penalty for {n} hints.', fr: 'Dont {penalty} de pénalité pour {n} indices.' },
+  hintsSummaryOne: { en: 'Including {penalty} of penalty for one hint.', fr: 'Dont {penalty} de pénalité pour un indice.' },
   // Envoi du résultat au maître du jeu : copie du code, envoyé sur Slack
-  codeTitle: 'Your result code',
-  codeHelp: 'Copy this code and send it to Benjamin on Slack so your result counts in the final ranking. It encodes your team name, your crest, your time and your verdict.',
-  copy: 'Copy the code',
-  copied: 'Copied. Now send it to Benjamin on Slack.',
-  copyFailed: 'Copy failed. Select the code and copy it by hand.',
-  copyHeader: 'Copy',
-  copyRow: 'Copy the result code of team {team}',
-  boardTitle: 'Investigations on this device',
-  boardNote: 'This ranking only lists the games played on this device. The game master holds the final ranking.',
+  codeTitle: { en: 'Your result code', fr: 'Votre code de résultat' },
+  codeHelp: {
+    en: 'Copy this code and send it to Benjamin on Slack so your result counts in the final ranking. It encodes your team name, your crest, your time and your verdict.',
+    fr: 'Copiez ce code et envoyez-le à Benjamin sur Slack pour que votre résultat compte dans le classement final. Il encode le nom de votre équipe, votre blason, votre temps et votre verdict.',
+  },
+  copy: { en: 'Copy the code', fr: 'Copier le code' },
+  copied: { en: 'Copied. Now send it to Benjamin on Slack.', fr: 'Copié. Envoyez-le maintenant à Benjamin sur Slack.' },
+  copyFailed: { en: 'Copy failed. Select the code and copy it by hand.', fr: 'La copie a échoué. Sélectionnez le code et copiez-le à la main.' },
+  copyHeader: { en: 'Copy', fr: 'Copier' },
+  copyRow: { en: 'Copy the result code of team {team}', fr: 'Copier le code de résultat de l’équipe {team}' },
+  boardTitle: { en: 'Investigations on this device', fr: 'Enquêtes sur cet appareil' },
+  boardNote: {
+    en: 'This ranking only lists the games played on this device. The game master holds the final ranking.',
+    fr: 'Ce classement ne liste que les parties jouées sur cet appareil. Le maître du jeu détient le classement final.',
+  },
   boardRank: '#',
-  boardTeam: 'Team',
-  boardTime: 'Time',
+  boardTeam: { en: 'Team', fr: 'Équipe' },
+  boardTime: { en: 'Time', fr: 'Temps' },
   boardVerdict: 'Verdict',
-  boardSolved: 'Solved',
-  boardFailed: 'Wrong',
+  boardSolved: { en: 'Solved', fr: 'Résolu' },
+  boardFailed: { en: 'Wrong', fr: 'Raté' },
   // Classement final du maître du jeu (écran #board)
-  finalKicker: 'Game master',
-  finalTitle: 'Final ranking',
-  finalEmpty: 'No result yet. The ranking fills in as the teams send their results.',
-  finalCount: '{n} teams ranked',
-  finalCountOne: '1 team ranked',
-  addCodeLabel: 'Add a result code',
-  addCodePlaceholder: 'Paste a result code or link',
-  addCode: 'Add',
-  addCodeInvalid: 'This is not a valid result code.',
-  addCodeDuplicate: 'This result is already in the ranking.',
-  addCodeAdded: 'Team {team} added to the ranking.',
-  removeHeader: 'Remove',
-  removeRow: 'Remove team {team} from the ranking',
-  clearBoard: 'Clear the ranking',
-  clearBoardConfirm: 'Remove every result from this ranking?',
-  backHome: 'Back to the château',
-  gameMasterLink: 'Game master: final ranking',
-  newGame: 'Start a new investigation',
-  skip: 'Skip to content',
-  noscript: 'This investigation needs JavaScript to run.',
+  finalKicker: { en: 'Game master', fr: 'Maître du jeu' },
+  finalTitle: { en: 'Final ranking', fr: 'Classement final' },
+  finalEmpty: { en: 'No result yet. The ranking fills in as the teams send their results.', fr: 'Aucun résultat pour l’instant. Le classement se remplit à mesure que les équipes envoient leurs résultats.' },
+  finalCount: { en: '{n} teams ranked', fr: '{n} équipes classées' },
+  finalCountOne: { en: '1 team ranked', fr: '1 équipe classée' },
+  addCodeLabel: { en: 'Add a result code', fr: 'Ajouter un code de résultat' },
+  addCodePlaceholder: { en: 'Paste a result code or link', fr: 'Collez un code ou un lien de résultat' },
+  addCode: { en: 'Add', fr: 'Ajouter' },
+  addCodeInvalid: { en: 'This is not a valid result code.', fr: 'Ce n’est pas un code de résultat valide.' },
+  addCodeDuplicate: { en: 'This result is already in the ranking.', fr: 'Ce résultat est déjà dans le classement.' },
+  addCodeAdded: { en: 'Team {team} added to the ranking.', fr: 'Équipe {team} ajoutée au classement.' },
+  removeHeader: { en: 'Remove', fr: 'Retirer' },
+  removeRow: { en: 'Remove team {team} from the ranking', fr: 'Retirer l’équipe {team} du classement' },
+  clearBoard: { en: 'Clear the ranking', fr: 'Vider le classement' },
+  clearBoardConfirm: { en: 'Remove every result from this ranking?', fr: 'Retirer tous les résultats de ce classement ?' },
+  backHome: { en: 'Back to the château', fr: 'Retour au château' },
+  gameMasterLink: { en: 'Game master: final ranking', fr: 'Maître du jeu : classement final' },
+  newGame: { en: 'Start a new investigation', fr: 'Commencer une nouvelle enquête' },
+  skip: { en: 'Skip to content', fr: 'Aller au contenu' },
 };
 
 /* ---------- Les cartes ----------
@@ -183,6 +254,8 @@ const UI = {
    ({cardsDir}/{axe}/{id}.png) et aux champs `eliminates` des salles.
    Marquer isSolution: true sur UNE carte par axe : c'est la solution.
    Les pièces obéissent à une règle à part, voir le commentaire de `pieces`.
+   Tous les textes (name, tagline, motive, reveal, history) sont bilingues,
+   { en, fr } ; les ids ne changent pas de langue.
 
    Les suspects portent en plus :
    - tagline : le clin d'œil à la vie de la boîte (affiché dans la fiche
@@ -194,41 +267,82 @@ const UI = {
    Inventor = CEO, Notary = celui qui garde le savoir sous clé (coupable),
    Gardener = marketing/growth, Cook = devs, Doctor = sales. */
 const suspects = [
-  { id: 'governess',   name: 'The Governess',   isSolution: false,
-    tagline: 'Onboards every newcomer to the house, checks in every quarter, and takes it personally when one leaves.',
-    motive:  'The master had decided to send the children away to boarding school at the end of the month. Without them, she had no place in this house.' },
-  { id: 'housekeeper', name: 'The Housekeeper', isSolution: false,
-    tagline: 'Keeps every key of the house on one ring, and every password on one sticky note.',
-    motive:  'The master had ordered every lock in the château changed, and the new keys handed to someone else.' },
-  { id: 'inventor',    name: 'The Inventor',    isSolution: false,
-    tagline: 'Forty-one prototypes in the attic, each one about to change everything. The east wing is still a proof of concept.',
-    motive:  'The master had cut off the money for the attic workshop: not another franc until one invention was actually finished.' },
-  { id: 'notary',      name: 'The Notary',      isSolution: true,
-    tagline: 'Keeps every deed, every contract and every secret of the house in a locked drawer. Sharing is not in his vocabulary.',
-    motive:  'The master meant to open the archives to the whole household: every deed, every contract, every secret out of the notary’s drawer and into the light.',
-    reveal:  'The master meant to open his archives to the whole household. Some men would rather kill than share what they know. At nine, under cover of the attic’s nightly bang, the notary forced the salon door to feed the deeds to the fire. The master caught him at the hearth, and the fire poker was the nearest thing to hand.' },
-  { id: 'gardener',    name: 'The Gardener',    isSolution: false,
-    tagline: 'Head of Growth. Literally.',
-    motive:  'The master wanted the flower beds paved over: a garden costs money, and nothing measurable grows in it.' },
-  { id: 'cook',        name: 'The Cook',        isSolution: false,
-    tagline: 'Ships hot, tastes later. “It worked in my kitchen.”',
-    motive:  'The master had demanded that every dish be tasted before it left the kitchen. The cook took it as an insult.' },
-  { id: 'doctor',      name: 'The Doctor',      isSolution: false,
-    tagline: 'Promises a full cure before examining the patient. Signs the contract at the bedside.',
-    motive:  'The master had stopped paying the doctor’s bills until the promised cure produced a result.' },
+  { id: 'governess',   name: { en: 'The Governess', fr: 'La Gouvernante' },   isSolution: false,
+    tagline: {
+      en: 'Onboards every newcomer to the house, checks in every quarter, and takes it personally when one leaves.',
+      fr: 'Accueille chaque nouvel arrivant dans la maison, fait le point chaque trimestre, et prend chaque départ comme un échec personnel.',
+    },
+    motive: {
+      en: 'The master had decided to send the children away to boarding school at the end of the month. Without them, she had no place in this house.',
+      fr: 'Le maître avait décidé d’envoyer les enfants en pension à la fin du mois. Sans eux, elle n’avait plus sa place dans cette maison.',
+    } },
+  { id: 'housekeeper', name: { en: 'The Housekeeper', fr: 'L’Intendante' }, isSolution: false,
+    tagline: {
+      en: 'Keeps every key of the house on one ring, and every password on one sticky note.',
+      fr: 'Garde toutes les clés de la maison sur un seul anneau, et tous les mots de passe sur un seul post-it.',
+    },
+    motive: {
+      en: 'The master had ordered every lock in the château changed, and the new keys handed to someone else.',
+      fr: 'Le maître avait ordonné de changer toutes les serrures du château, et de confier les nouvelles clés à quelqu’un d’autre.',
+    } },
+  { id: 'inventor',    name: { en: 'The Inventor', fr: 'L’Inventeur' },    isSolution: false,
+    tagline: {
+      en: 'Forty-one prototypes in the attic, each one about to change everything. The east wing is still a proof of concept.',
+      fr: 'Quarante-et-un prototypes au grenier, chacun sur le point de tout changer. L’aile orientale est toujours à l’état de preuve de concept.',
+    },
+    motive: {
+      en: 'The master had cut off the money for the attic workshop: not another franc until one invention was actually finished.',
+      fr: 'Le maître avait coupé les vivres à l’atelier du grenier : plus un franc tant qu’une invention ne serait pas réellement terminée.',
+    } },
+  { id: 'notary',      name: { en: 'The Notary', fr: 'Le Notaire' },      isSolution: true,
+    tagline: {
+      en: 'Keeps every deed, every contract and every secret of the house in a locked drawer. Sharing is not in his vocabulary.',
+      fr: 'Garde chaque acte, chaque contrat et chaque secret de la maison dans un tiroir fermé à clé. Partager ne fait pas partie de son vocabulaire.',
+    },
+    motive: {
+      en: 'The master meant to open the archives to the whole household: every deed, every contract, every secret out of the notary’s drawer and into the light.',
+      fr: 'Le maître voulait ouvrir les archives à toute la maisonnée : chaque acte, chaque contrat, chaque secret sorti du tiroir du notaire et mis en pleine lumière.',
+    },
+    reveal: {
+      en: 'The master meant to open his archives to the whole household. Some men would rather kill than share what they know. At nine, under cover of the attic’s nightly bang, the notary forced the salon door to feed the deeds to the fire. The master caught him at the hearth, and the fire poker was the nearest thing to hand.',
+      fr: 'Le maître voulait ouvrir ses archives à toute la maisonnée. Certains hommes préfèrent tuer plutôt que partager ce qu’ils savent. À neuf heures, à la faveur de la détonation nocturne du grenier, le notaire a forcé la porte du salon pour livrer les actes au feu. Le maître l’a surpris devant le foyer, et le tisonnier était à portée de main.',
+    } },
+  { id: 'gardener',    name: { en: 'The Gardener', fr: 'Le Jardinier' },    isSolution: false,
+    tagline: { en: 'Head of Growth. Literally.', fr: 'Head of Growth. Au sens propre.' },
+    motive: {
+      en: 'The master wanted the flower beds paved over: a garden costs money, and nothing measurable grows in it.',
+      fr: 'Le maître voulait faire paver les massifs : un jardin coûte de l’argent, et rien de mesurable n’y pousse.',
+    } },
+  { id: 'cook',        name: { en: 'The Cook', fr: 'Le Cuisinier' },        isSolution: false,
+    tagline: { en: 'Ships hot, tastes later. “It worked in my kitchen.”', fr: 'Livre chaud, goûte plus tard. « Ça marchait dans ma cuisine. »' },
+    motive: {
+      en: 'The master had demanded that every dish be tasted before it left the kitchen. The cook took it as an insult.',
+      fr: 'Le maître avait exigé que chaque plat soit goûté avant de quitter la cuisine. Le cuisinier l’a pris comme une insulte.',
+    } },
+  { id: 'doctor',      name: { en: 'The Doctor', fr: 'Le Docteur' },      isSolution: false,
+    tagline: {
+      en: 'Promises a full cure before examining the patient. Signs the contract at the bedside.',
+      fr: 'Promet la guérison complète avant d’avoir examiné le patient. Fait signer le contrat au chevet du lit.',
+    },
+    motive: {
+      en: 'The master had stopped paying the doctor’s bills until the promised cure produced a result.',
+      fr: 'Le maître avait cessé de payer les honoraires du docteur tant que la guérison promise ne donnerait pas de résultat.',
+    } },
 ];
 /* Indice du notaire, inutilisé tant qu'il est le coupable (à réutiliser si la
    solution change) : « The killer’s fingers bore no ink, and nothing was
-   signed, sealed or notarised that night. » */
+   signed, sealed or notarised that night. » / « Les doigts du tueur ne
+   portaient pas d’encre, et rien n’a été signé, scellé ni notarié cette
+   nuit-là. » */
 
 const weapons = [
-  { id: 'candlestick',  name: 'The Candlestick',  isSolution: false },
-  { id: 'dagger',       name: 'The Dagger',       isSolution: false },
-  { id: 'revolver',     name: 'The Revolver',     isSolution: false },
-  { id: 'rope',         name: 'The Rope',         isSolution: false },
-  { id: 'poison',       name: 'The Poison',       isSolution: false },
-  { id: 'poker',        name: 'The Fire Poker',   isSolution: true  }, // arme du crime : le tisonnier de la cheminée du salon (id inchangé : nomme l'image)
-  { id: 'billiard-cue', name: 'The Billiard Cue', isSolution: false },
+  { id: 'candlestick',  name: { en: 'The Candlestick',  fr: 'Le Chandelier' },       isSolution: false },
+  { id: 'dagger',       name: { en: 'The Dagger',       fr: 'Le Poignard' },         isSolution: false },
+  { id: 'revolver',     name: { en: 'The Revolver',     fr: 'Le Revolver' },         isSolution: false },
+  { id: 'rope',         name: { en: 'The Rope',         fr: 'La Corde' },            isSolution: false },
+  { id: 'poison',       name: { en: 'The Poison',       fr: 'Le Poison' },           isSolution: false },
+  { id: 'poker',        name: { en: 'The Fire Poker',   fr: 'Le Tisonnier' },        isSolution: true  }, // arme du crime : le tisonnier de la cheminée du salon (id inchangé : nomme l'image)
+  { id: 'billiard-cue', name: { en: 'The Billiard Cue', fr: 'La Queue de billard' }, isSolution: false },
 ];
 
 /* Les pièces : pas d'indice « room ». Les sept cartes sont les six salles
@@ -237,9 +351,9 @@ const weapons = [
    (tampon « searched », carte non cliquable) ; à la fin, seule la scène du
    crime reste active. isSolution: true va donc sur la pièce sans épreuve ;
    init() signale dans la console toute incohérence entre `pieces` et `rooms`.
-   Ordre d'affichage (carnet et menu d'accusation) : alphabétique, donc
-   volontairement différent de l'ordre des salles, pour que le grisage ne
-   suive pas la visite.
+   Ordre d'affichage (carnet et menu d'accusation) : alphabétique sur le nom
+   anglais, donc volontairement différent de l'ordre des salles, pour que le
+   grisage ne suive pas la visite. Le même ordre sert en français.
    `history` : la vraie histoire de la pièce (site du château + visite vidéo),
    lue via le sceau de la carte dans le carnet, comme la fiche des suspects.
    Ton « archives de la maison », factuel, hors intrigue. Les cheminées sont
@@ -247,32 +361,56 @@ const weapons = [
    salon, la fiche du salon ne doit pas être la seule à parler d'un foyer.
    L'occupation de 1944 est évoquée sans nommer personne. */
 const pieces = [
-  { id: 'billiard-room',            name: 'Billiard Room',            isSolution: false,
-    history: 'This was the dining room of the house. Through the hatch in the wall, a footman waited for the dishes on the kitchen side. The marble fireplace and the tall ceilings are original, and the house is still warmed through vents in the walls, a system as old as the building.' },
-  { id: 'bonaparte-bedroom',        name: 'Bonaparte Bedroom',        isSolution: false,
-    history: 'The middle room of the row: one door to Louis XIV, one to Marie-Antoinette. Its fireplace is younger than the house, marble faced with brick in the fashion of 1900. The window looks over the garden and the fire pit at the back.' },
-  { id: 'kitchen',                  name: 'Kitchen',                  isSolution: false,
-    history: 'The door beside this room was the servants’ entrance; the family came in by the stone steps at the back. The old hearth where every meal of the house was cooked still stands. A hatch in the wall opens onto the former dining room, so that dishes passed from cook to footman without either crossing the threshold.' },
-  { id: 'louis-xiv-bedroom',        name: 'Louis XIV Bedroom',        isSolution: false,
-    history: 'Named for the portrait of the Sun King on the wall. Original parquet, a black marble fireplace long out of use, and a window onto the main drive and the two lodges that mark the entrance to the estate. A small passage in the corner leads through to the next bedroom, as rooms were once built in a row.' },
-  { id: 'marie-antoinette-bedroom', name: 'Marie-Antoinette Bedroom', isSolution: false,
-    history: 'The largest suite of the house, named for the queen framed above the bed. A monumental fireplace, and furniture in the taste of Louis XV and Louis XVI. Its bathroom sits in the tower, directly above the bar.' },
-  { id: 'rotunda-bar',              name: 'Rotunda Bar',              isSolution: false,
-    history: 'The ground floor of the tower, most likely the master’s study before it became a bar. The tower rises three levels: a bathroom above, and an attic under the slates meant for a small library. During the war, the officers quartered here scratched their names into the window panes.' },
-  { id: 'salon',                    name: 'Salon',                    isSolution: true, // scène du crime : aucune épreuve (RDC)
-    history: 'The official entrance of the house opens here, up the stone steps that hug the rounded façade. Original parquet, mouldings all around, a monumental chandelier and the great marble fireplace. On the wall, the portrait of Count de Viry, who built this house in 1834 as a hunting retreat, still keeps an eye on his salon.' },
+  { id: 'billiard-room',            name: { en: 'Billiard Room', fr: 'Salle de billard' },                    isSolution: false,
+    history: {
+      en: 'This was the dining room of the house. Through the hatch in the wall, a footman waited for the dishes on the kitchen side. The marble fireplace and the tall ceilings are original, and the house is still warmed through vents in the walls, a system as old as the building.',
+      fr: 'C’était la salle à manger de la maison. Par le passe-plat, un valet attendait les plats côté cuisine. La cheminée de marbre et les hauts plafonds sont d’origine, et la maison se chauffe encore par des bouches d’aération dans les murs, un système aussi ancien que le bâtiment.',
+    } },
+  { id: 'bonaparte-bedroom',        name: { en: 'Bonaparte Bedroom', fr: 'Chambre Bonaparte' },               isSolution: false,
+    history: {
+      en: 'The middle room of the row: one door to Louis XIV, one to Marie-Antoinette. Its fireplace is younger than the house, marble faced with brick in the fashion of 1900. The window looks over the garden and the fire pit at the back.',
+      fr: 'La chambre du milieu de l’enfilade : une porte vers Louis XIV, une autre vers Marie-Antoinette. Sa cheminée est plus jeune que la maison, marbre habillé de brique dans le goût de 1900. La fenêtre donne sur le jardin et le foyer extérieur, à l’arrière.',
+    } },
+  { id: 'kitchen',                  name: { en: 'Kitchen', fr: 'Cuisine' },                                   isSolution: false,
+    history: {
+      en: 'The door beside this room was the servants’ entrance; the family came in by the stone steps at the back. The old hearth where every meal of the house was cooked still stands. A hatch in the wall opens onto the former dining room, so that dishes passed from cook to footman without either crossing the threshold.',
+      fr: 'La porte à côté de cette pièce était l’entrée des domestiques ; la famille entrait par l’escalier de pierre, à l’arrière. L’ancien foyer où se cuisinait chaque repas de la maison est toujours là. Un passe-plat s’ouvre sur l’ancienne salle à manger : les plats passaient du cuisinier au valet sans que ni l’un ni l’autre ne franchisse le seuil.',
+    } },
+  { id: 'louis-xiv-bedroom',        name: { en: 'Louis XIV Bedroom', fr: 'Chambre Louis XIV' },               isSolution: false,
+    history: {
+      en: 'Named for the portrait of the Sun King on the wall. Original parquet, a black marble fireplace long out of use, and a window onto the main drive and the two lodges that mark the entrance to the estate. A small passage in the corner leads through to the next bedroom, as rooms were once built in a row.',
+      fr: 'Nommée d’après le portrait du Roi-Soleil accroché au mur. Parquet d’origine, une cheminée de marbre noir hors d’usage depuis longtemps, et une fenêtre sur l’allée principale et les deux dépendances qui marquent l’entrée du domaine. Un petit passage dans le coin mène à la chambre voisine, comme on bâtissait autrefois les pièces en enfilade.',
+    } },
+  { id: 'marie-antoinette-bedroom', name: { en: 'Marie-Antoinette Bedroom', fr: 'Chambre Marie-Antoinette' }, isSolution: false,
+    history: {
+      en: 'The largest suite of the house, named for the queen framed above the bed. A monumental fireplace, and furniture in the taste of Louis XV and Louis XVI. Its bathroom sits in the tower, directly above the bar.',
+      fr: 'La plus grande suite de la maison, nommée d’après la reine encadrée au-dessus du lit. Une cheminée monumentale, et un mobilier dans le goût de Louis XV et Louis XVI. Sa salle de bain occupe la tour, juste au-dessus du bar.',
+    } },
+  { id: 'rotunda-bar',              name: { en: 'Rotunda Bar', fr: 'Bar de la rotonde' },                     isSolution: false,
+    history: {
+      en: 'The ground floor of the tower, most likely the master’s study before it became a bar. The tower rises three levels: a bathroom above, and an attic under the slates meant for a small library. During the war, the officers quartered here scratched their names into the window panes.',
+      fr: 'Le rez-de-chaussée de la tour, sans doute le bureau du maître avant de devenir un bar. La tour compte trois niveaux : une salle de bain au-dessus, et des combles sous les ardoises destinés à une petite bibliothèque. Pendant la guerre, les officiers logés ici ont gravé leurs noms dans les vitres.',
+    } },
+  { id: 'salon',                    name: 'Salon',                                                            isSolution: true, // scène du crime : aucune épreuve (RDC)
+    history: {
+      en: 'The official entrance of the house opens here, up the stone steps that hug the rounded façade. Original parquet, mouldings all around, a monumental chandelier and the great marble fireplace. On the wall, the portrait of Count de Viry, who built this house in 1834 as a hunting retreat, still keeps an eye on his salon.',
+      fr: 'L’entrée officielle de la maison s’ouvre ici, en haut de l’escalier de pierre qui épouse la façade arrondie. Parquet d’origine, moulures tout autour, un lustre monumental et la grande cheminée de marbre. Au mur, le portrait du comte de Viry, qui fit bâtir cette maison en 1834 comme relais de chasse, veille toujours sur son salon.',
+    } },
 ];
 
 /* ---------- La vraie maison ----------
    Histoire réelle du château (chateau-guillermo.com/fr/history + visite
    vidéo), hors intrigue, affichée sur l'écran de résultat après le verdict :
    lue une fois, quand le chrono est arrêté, sans ralentir la partie. Un
-   paragraphe par entrée. Le site écrit 1871 ; la bataille de Sedan est du
-   1er septembre 1870, d'où « 1870 » ici. */
+   paragraphe par entrée, bilingue. Le site écrit 1871 ; la bataille de
+   Sedan est du 1er septembre 1870, d'où « 1870 » ici. */
 const houseHistory = [
-  'Built in 1834 by Count de Viry as a hunting retreat, under the name Château Haut Montvillers. In 1870 the French army held it while the battle of Sedan was fought in the valley below; it appears in the corner of a photograph of the battlefield.',
-  'In 1944 German officers were quartered here during the Battle of the Ardennes, and scratched their names into the window panes. A Parisian family bought it in 1952, posed proudly on the great steps, and left the floors of their own era behind.',
-  'In 2009 a Belgian family found it without heating, water or electricity, and brought it back to life. Since 2023 it has borne the name of the man who first believed in it: Guillaume.',
+  { en: 'Built in 1834 by Count de Viry as a hunting retreat, under the name Château Haut Montvillers. In 1870 the French army held it while the battle of Sedan was fought in the valley below; it appears in the corner of a photograph of the battlefield.',
+    fr: 'Bâti en 1834 par le comte de Viry comme relais de chasse, sous le nom de Château Haut Montvillers. En 1870, l’armée française le tint pendant que la bataille de Sedan se livrait dans la vallée en contrebas ; il apparaît dans le coin d’une photographie du champ de bataille.' },
+  { en: 'In 1944 German officers were quartered here during the Battle of the Ardennes, and scratched their names into the window panes. A Parisian family bought it in 1952, posed proudly on the great steps, and left the floors of their own era behind.',
+    fr: 'En 1944, des officiers allemands y furent logés pendant la bataille des Ardennes, et gravèrent leurs noms dans les vitres. Une famille parisienne l’acheta en 1952, posa fièrement sur le grand escalier, et y laissa les sols de son époque.' },
+  { en: 'In 2009 a Belgian family found it without heating, water or electricity, and brought it back to life. Since 2023 it has borne the name of the man who first believed in it: Guillaume.',
+    fr: 'En 2009, une famille belge le trouva sans chauffage, sans eau ni électricité, et le ramena à la vie. Depuis 2023, il porte le nom de celui qui y a cru le premier : Guillaume.' },
 ];
 
 /* ---------- Les six salles ----------
@@ -287,7 +425,9 @@ const houseHistory = [
    - inputLabel       : libellé du champ de réponse
    - inputMode        : 'text' ou 'numeric' (clavier mobile adapté)
    - answers          : réponses acceptées, comparées après normalisation
-                        (minuscules, sans accents, sans espaces)
+                        (minuscules, sans accents, sans espaces). Communes
+                        aux deux langues : elles nomment ce que l'équipe
+                        trouve physiquement sur place (accessoires en anglais)
    - clues            : les deux indices affichés après réussite (culprit,
                         weapon). Pas d'indice « room » : la salle elle-même
                         est grisée dans le carnet une fois résolue
@@ -297,6 +437,8 @@ const houseHistory = [
                         ils se débloquent ; chacun ajoute
                         CONFIG.hintPenaltySeconds au chrono et au temps final.
                         Une salle sans `hints` n'affiche pas le bloc
+   Tous les textes sont bilingues, { en, fr } ; ids, plans et réponses ne
+   changent pas de langue.
 
    Indices « culprit » : six salles, six innocents écartés, le septième est
    le coupable (le notaire). Chaque indice contient un mot d'ancrage qui
@@ -327,94 +469,152 @@ const houseHistory = [
 const rooms = [
   {
     id: 'billiard-room',
-    name: 'Billiard Room',
-    floor: 'Ground floor',
-    ambiance: 'The felt is still warm. Someone played here tonight, and not for the love of the game.',
+    name: { en: 'Billiard Room', fr: 'Salle de billard' },
+    floor: { en: 'Ground floor', fr: 'Rez-de-chaussée' },
+    ambiance: {
+      en: 'The felt is still warm. Someone played here tonight, and not for the love of the game.',
+      fr: 'Le tapis est encore chaud. Quelqu’un a joué ici ce soir, et pas pour l’amour du jeu.',
+    },
     map: { src: 'assets/maps/ground-floor.jpg', zone: { x: 55, y: 52, w: 22, h: 28 } },
     cartons: [
-      { label: 'Instructions', main: true,
-        text: '“The master of this house never left anything to chance. He watches over this room still. Meet his gaze, and see what he played with.”' },
+      { label: { en: 'Instructions', fr: 'Consignes' }, main: true,
+        text: {
+          en: '“The master of this house never left anything to chance. He watches over this room still. Meet his gaze, and see what he played with.”',
+          fr: '« Le maître de cette maison ne laissait jamais rien au hasard. Il veille encore sur cette pièce. Croisez son regard, et voyez avec quoi il jouait. »',
+        } },
     ],
-    inputLabel: 'The password',
+    inputLabel: { en: 'The password', fr: 'Le mot de passe' },
     inputMode: 'text',
-    answers: ['castle'],
+    answers: ['castle'],   // les boules épellent CASTLE, dans les deux langues
     // VO de l'indice : « Retourne les boules rouges et assemble les lettres du mot de passe. »
-    hints: ['Turn the red balls over. Each one hides a letter: gather them, put them in order, and you have the password.'],
+    hints: [
+      { en: 'Turn the red balls over. Each one hides a letter: gather them, put them in order, and you have the password.',
+        fr: 'Retournez les boules rouges. Chacune cache une lettre : rassemblez-les, mettez-les dans l’ordre, et vous avez le mot de passe.' },
+    ],
     clues: {
-      culprit: 'The floors were spotless. Not a speck of earth, not a blade of grass: the killer had not set foot in the garden all week.',
-      weapon: 'All twelve billiard cues were on their rack, chalked and counted, when the alarm was raised. Not one had left it all evening.',
+      culprit: {
+        en: 'The floors were spotless. Not a speck of earth, not a blade of grass: the killer had not set foot in the garden all week.',
+        fr: 'Les sols étaient impeccables. Pas un grain de terre, pas un brin d’herbe : le tueur n’avait pas mis les pieds au jardin de toute la semaine.',
+      },
+      weapon: {
+        en: 'All twelve billiard cues were on their rack, chalked and counted, when the alarm was raised. Not one had left it all evening.',
+        fr: 'Les douze queues de billard étaient toutes au râtelier, comptées et encore blanches de craie, quand l’alerte a été donnée. Aucune ne l’avait quitté de toute la soirée.',
+      },
     },
     eliminates: { culprit: 'gardener', weapon: 'billiard-cue' },
   },
   {
     id: 'rotunda-bar',
-    name: 'Rotunda Bar',
-    floor: 'Ground floor',
-    ambiance: 'Glasses knocked over, a bottle uncorked, and nobody left to raise a toast.',
+    name: { en: 'Rotunda Bar', fr: 'Bar de la rotonde' },
+    floor: { en: 'Ground floor', fr: 'Rez-de-chaussée' },
+    ambiance: {
+      en: 'Glasses knocked over, a bottle uncorked, and nobody left to raise a toast.',
+      fr: 'Des verres renversés, une bouteille débouchée, et plus personne pour lever son verre.',
+    },
     map: { src: 'assets/maps/ground-floor.jpg', zone: { x: 76.5, y: 67, w: 15, h: 21 } },
     cartons: [
-      { label: 'Instructions, on the counter', main: true,
-        text: '“The master trusted age over luck. Every label carries a year, every bottle hides a mark. Set them oldest to youngest, and read what they leave behind.”' },
+      { label: { en: 'Instructions, on the counter', fr: 'Consignes, sur le comptoir' }, main: true,
+        text: {
+          en: '“The master trusted age over luck. Every label carries a year, every bottle hides a mark. Set them oldest to youngest, and read what they leave behind.”',
+          fr: '« Le maître se fiait à l’âge plutôt qu’à la chance. Chaque étiquette porte une année, chaque bouteille cache une marque. Rangez-les de la plus vieille à la plus jeune, et lisez ce qu’elles laissent derrière elles. »',
+        } },
     ],
-    inputLabel: 'The vintage',
+    inputLabel: { en: 'The vintage', fr: 'Le millésime' },
     inputMode: 'numeric',
     answers: ['2008'],
     // VO de l'indice : « Trie les bouteilles par date et regarde en dessous. »
-    hints: ['Sort the bottles by the year on their labels, oldest first, then look underneath each one. Read the marks in that order: they give the vintage.'],
+    hints: [
+      { en: 'Sort the bottles by the year on their labels, oldest first, then look underneath each one. Read the marks in that order: they give the vintage.',
+        fr: 'Classez les bouteilles selon l’année de leur étiquette, la plus ancienne d’abord, puis regardez sous chacune. Lisez les marques dans cet ordre : elles donnent le millésime.' },
+    ],
     clues: {
-      culprit: 'At nine, as every night, the whole house heard the usual explosion from the attic workshop, and the usual “it almost worked”. The master died in that very minute.',
-      weapon: 'No poison ever passed the master’s lips: the dogs finished his plate and his last glass of port, and they are in perfect health this morning.',
+      culprit: {
+        en: 'At nine, as every night, the whole house heard the usual explosion from the attic workshop, and the usual “it almost worked”. The master died in that very minute.',
+        fr: 'À neuf heures, comme chaque soir, toute la maison a entendu l’explosion habituelle de l’atelier du grenier, et l’habituel « ça a presque marché ». Le maître est mort à cette minute précise.',
+      },
+      weapon: {
+        en: 'No poison ever passed the master’s lips: the dogs finished his plate and his last glass of port, and they are in perfect health this morning.',
+        fr: 'Aucun poison n’a franchi les lèvres du maître : les chiens ont fini son assiette et son dernier verre de porto, et ils sont en parfaite santé ce matin.',
+      },
     },
     eliminates: { culprit: 'inventor', weapon: 'poison' },
   },
   {
     id: 'kitchen',
-    name: 'Kitchen',
-    floor: 'Ground floor',
+    name: { en: 'Kitchen', fr: 'Cuisine' },
+    floor: { en: 'Ground floor', fr: 'Rez-de-chaussée' },
     // Énigme : sept plats, un par jour, cachés dans la cuisine (page arrachée, post-it,
     // bocal, lettre, moule retourné, liste de courses, carton d'invitation) :
     // Beef Wellington, Apple crumble, Nut roast, Quiche, Upside-down cake, Eton mess,
     // Trifle. Remis dans l'ordre de la semaine, leurs initiales donnent BANQUET.
-    ambiance: 'The stove has gone cold, but the week is still here: torn, stuck, crumpled and turned over.',
+    // Les recettes cachées sont en anglais dans les deux langues : l'acrostiche en dépend.
+    ambiance: {
+      en: 'The stove has gone cold, but the week is still here: torn, stuck, crumpled and turned over.',
+      fr: 'Le fourneau est froid, mais la semaine est encore là : déchirée, collée, froissée et retournée.',
+    },
     map: { src: 'assets/maps/ground-floor.jpg', zone: { x: 50.5, y: 17.7, w: 27.5, h: 34.3 } },
     cartons: [
-      { label: 'Instructions', main: true,
-        text: '“The Mistress kept one recipe for each day of the week. Her notes are now scattered across the kitchen.”' },
+      { label: { en: 'Instructions', fr: 'Consignes' }, main: true,
+        text: {
+          en: '“The Mistress kept one recipe for each day of the week. Her notes are now scattered across the kitchen.”',
+          fr: '« La maîtresse de maison gardait une recette pour chaque jour de la semaine. Ses notes sont désormais éparpillées dans la cuisine. »',
+        } },
     ],
-    inputLabel: 'Your answer',
+    inputLabel: { en: 'Your answer', fr: 'Votre réponse' },
     inputMode: 'text',
     answers: ['banquet'],
     // VO de l'indice : « Trouve les sept recettes, la première lettre de chaque recette te donnera un mot. »
-    hints: ['Find the seven recipes hidden around the kitchen, one for each day of the week. Put them back in order, Monday to Sunday: the first letter of each dish spells the word.'],
+    hints: [
+      { en: 'Find the seven recipes hidden around the kitchen, one for each day of the week. Put them back in order, Monday to Sunday: the first letter of each dish spells the word.',
+        fr: 'Trouvez les sept recettes cachées dans la cuisine, une pour chaque jour de la semaine. Remettez-les dans l’ordre, du lundi au dimanche : la première lettre de chaque plat forme le mot.' },
+    ],
     clues: {
-      culprit: 'Whoever did this had never studied medicine, and could not have told a pulse from a hiccup.',
-      weapon: 'The body bore not a single cut. The dagger never left its sheath, and no other blade came near the master that night.',
+      culprit: {
+        en: 'Whoever did this had never studied medicine, and could not have told a pulse from a hiccup.',
+        fr: 'L’auteur du crime n’avait jamais étudié la médecine, et n’aurait pas su distinguer un pouls d’un hoquet.',
+      },
+      weapon: {
+        en: 'The body bore not a single cut. The dagger never left its sheath, and no other blade came near the master that night.',
+        fr: 'Le corps ne portait pas la moindre entaille. Le poignard n’a jamais quitté sa gaine, et aucune autre lame n’a approché le maître cette nuit-là.',
+      },
     },
     eliminates: { culprit: 'doctor', weapon: 'dagger' },
   },
   {
     id: 'bonaparte-bedroom',
-    name: 'Bonaparte Bedroom',
-    floor: 'First floor',
-    ambiance: 'Empires have fallen to a broken cipher. The master knew it, and hid his in the books nobody here would ever read.',
+    name: { en: 'Bonaparte Bedroom', fr: 'Chambre Bonaparte' },
+    floor: { en: 'First floor', fr: 'Premier étage' },
+    ambiance: {
+      en: 'Empires have fallen to a broken cipher. The master knew it, and hid his in the books nobody here would ever read.',
+      fr: 'Des empires sont tombés pour un code percé à jour. Le maître le savait, et a caché le sien dans les livres que personne ici ne lirait jamais.',
+    },
     map: { src: 'assets/maps/first-floor.jpg', zone: { x: 17, y: 52.3, w: 23, h: 27.7 } },   // chambre 2 du plan
     cartons: [
-      { label: 'Instructions', main: true,
-        text: 'Five books have no business in this room. Each one hides a card. The master left one word behind, but scrambled it so no stranger could read it: QZTPJ. Gather the five cards, restore each letter, and you will know what he protected above all.' },
+      { label: { en: 'Instructions', fr: 'Consignes' }, main: true,
+        text: {
+          en: 'Five books have no business in this room. Each one hides a card. The master left one word behind, but scrambled it so no stranger could read it: QZTPJ. Gather the five cards, restore each letter, and you will know what he protected above all.',
+          fr: 'Cinq livres n’ont rien à faire dans cette chambre. Chacun cache une carte. Le maître a laissé un mot derrière lui, mais l’a brouillé pour qu’aucun étranger ne puisse le lire : QZTPJ. Rassemblez les cinq cartes, rétablissez chaque lettre, et vous saurez ce qu’il protégeait par-dessus tout.',
+        } },
     ],
-    inputLabel: 'Your answer',
+    inputLabel: { en: 'Your answer', fr: 'Votre réponse' },
     inputMode: 'text',
     answers: ['elium'],
     clues: {
-      culprit: 'At nine the children were being read their bedtime story, as every night. The two little ones swear their governess never left the nursery.',
-      weapon: 'The master’s revolver was in its case, every chamber still loaded, and there was not a whiff of powder anywhere in the house.',
+      culprit: {
+        en: 'At nine the children were being read their bedtime story, as every night. The two little ones swear their governess never left the nursery.',
+        fr: 'À neuf heures, on lisait aux enfants leur histoire du soir, comme chaque nuit. Les deux petits jurent que leur gouvernante n’a pas quitté la chambre des enfants.',
+      },
+      weapon: {
+        en: 'The master’s revolver was in its case, every chamber still loaded, and there was not a whiff of powder anywhere in the house.',
+        fr: 'Le revolver du maître était dans son coffret, chaque chambre encore chargée, et pas la moindre odeur de poudre nulle part dans la maison.',
+      },
     },
     eliminates: { culprit: 'governess', weapon: 'revolver' },
   },
   {
     id: 'marie-antoinette-bedroom',
-    name: 'Marie-Antoinette Bedroom',
-    floor: 'First floor',
+    name: { en: 'Marie-Antoinette Bedroom', fr: 'Chambre Marie-Antoinette' },
+    floor: { en: 'First floor', fr: 'Premier étage' },
     // Énigme : la grille de Cardan. Sur la commode, sous le miroir, une lettre de la
     // reine à Fersen (copie « gardée par le maître »), parfaitement anodine : le temps,
     // les enfants, la harpe, le jardin, des souvenirs de voyage. Sous les oreillers, le
@@ -432,31 +632,45 @@ const rooms = [
     // Imprimable (lettre + masque sur une même feuille A4 paysage, carton, masque de
     // rechange, superposition de contrôle) : assets/print/marie-antoinette-letter.html.
     // Imprimer à 100 %, découper le long des traits gris puis les fenêtres, plastifier.
-    // VO du carton : « La reine écrivait à Fersen des mots ordinaires qui ne disaient
-    // rien, et cachait la vérité entre eux. Sa lettre seule ne vous dira rien. Ce qui
-    // la lit, elle l'a gardé à part, et ne l'a confié qu'à son sommeil. Trouvez-le, et
-    // ne lisez que ce qu'il vous laisse voir. Le garde à la grille attend un seul mot. »
-    ambiance: 'Her letters to Fersen were drowned in ink by a jealous hand that could not bear her tenderness. The master kept one of them, and the means to read it.',
+    // La lettre imprimée n'existe qu'en anglais : les douze mots lus par la fenêtre
+    // sont anglais quelle que soit la langue de l'app (une version française
+    // demanderait de réécrire la lettre, pas de la traduire).
+    ambiance: {
+      en: 'Her letters to Fersen were drowned in ink by a jealous hand that could not bear her tenderness. The master kept one of them, and the means to read it.',
+      fr: 'Ses lettres à Fersen ont été noyées d’encre par une main jalouse qui ne supportait pas sa tendresse. Le maître en a gardé une, et le moyen de la lire.',
+    },
     map: { src: 'assets/maps/first-floor.jpg', zone: { x: 55.2, y: 52.3, w: 22, h: 27.7 } },   // chambre 3 du plan
     cartons: [
-      { label: 'Instructions, on the chest of drawers', main: true,
-        text: '“The queen wrote to Fersen in plain words that meant nothing, and hid the truth between them. Her letter alone will tell you nothing. What reads it, she kept apart, and confided to her sleep alone. Find it, and read only what it lets you see. The guard at the gate waits for one word.”' },
+      { label: { en: 'Instructions, on the chest of drawers', fr: 'Consignes, sur la commode' }, main: true,
+        text: {
+          en: '“The queen wrote to Fersen in plain words that meant nothing, and hid the truth between them. Her letter alone will tell you nothing. What reads it, she kept apart, and confided to her sleep alone. Find it, and read only what it lets you see. The guard at the gate waits for one word.”',
+          fr: '« La reine écrivait à Fersen des mots ordinaires qui ne disaient rien, et cachait la vérité entre eux. Sa lettre seule ne vous dira rien. Ce qui la lit, elle l’a gardé à part, et ne l’a confié qu’à son sommeil. Trouvez-le, et ne lisez que ce qu’il vous laisse voir. Le garde à la grille attend un seul mot. »',
+        } },
     ],
-    inputLabel: 'The word for the guard',
+    inputLabel: { en: 'The word for the guard', fr: 'Le mot pour le garde' },
     inputMode: 'text',
     answers: ['varennes'],
     // VO de l'indice : « Retrouve la grille sous son oreiller, mets-la par-dessus la lettre et trouve le mot pour le garde. »
-    hints: ['Look under her pillow: a card pierced with windows is hidden there. Lay it over the letter, fleur-de-lis on fleur-de-lis. The words left showing tell you the word for the guard.'],
+    hints: [
+      { en: 'Look under her pillow: a card pierced with windows is hidden there. Lay it over the letter, fleur-de-lis on fleur-de-lis. The words left showing tell you the word for the guard.',
+        fr: 'Regardez sous son oreiller : une carte percée de fenêtres y est cachée. Posez-la sur la lettre, fleur de lys sur fleur de lys. Les mots qui restent visibles vous donnent le mot pour le garde.' },
+    ],
     clues: {
-      culprit: 'The door was forced. The killer had none of the keys of this house, and the great ring of keys never left its hook.',
-      weapon: 'Whatever else befell the master, his neck was spared: no rope, no cord, not so much as a bruise.',
+      culprit: {
+        en: 'The door was forced. The killer had none of the keys of this house, and the great ring of keys never left its hook.',
+        fr: 'La porte a été forcée. Le tueur n’avait aucune des clés de cette maison, et le grand anneau de clés n’a jamais quitté son crochet.',
+      },
+      weapon: {
+        en: 'Whatever else befell the master, his neck was spared: no rope, no cord, not so much as a bruise.',
+        fr: 'Quoi qu’il soit arrivé au maître, son cou a été épargné : ni corde, ni cordon, pas même une ecchymose.',
+      },
     },
     eliminates: { culprit: 'housekeeper', weapon: 'rope' },
   },
   {
     id: 'louis-xiv-bedroom',
-    name: 'Louis XIV Bedroom',
-    floor: 'First floor',
+    name: { en: 'Louis XIV Bedroom', fr: 'Chambre Louis XIV' },
+    floor: { en: 'First floor', fr: 'Premier étage' },
     // Énigme : la chambre du Roi-Soleil est plongée dans le noir (volets et rideaux
     // tirés, lumières coupées). Du fil transparent (fil de pêche, nylon à coudre)
     // est tendu en travers de la pièce à différentes hauteurs, entre meubles,
@@ -468,18 +682,31 @@ const rooms = [
     // lumière, le maître de maison éteint ; le carton l'annonce en creux avec
     // « put out the sun »). Option : écrire le mot à l'envers, lisible seulement
     // dans un miroir (clin d'œil à la galerie des Glaces), ou au feutre UV.
-    ambiance: 'The Sun King’s chamber, and not a ray of light left in it. Someone drew the curtains, and strung the dark with what nobody was meant to see.',
+    // « éclipse » tapé avec l'accent est accepté (normalisation sans accents).
+    ambiance: {
+      en: 'The Sun King’s chamber, and not a ray of light left in it. Someone drew the curtains, and strung the dark with what nobody was meant to see.',
+      fr: 'La chambre du Roi-Soleil, et plus un rayon de lumière. Quelqu’un a tiré les rideaux, et tendu dans le noir ce que personne n’était censé voir.',
+    },
     map: { src: 'assets/maps/first-floor.jpg', zone: { x: 10, y: 17.7, w: 23.3, h: 34.3 } },   // chambre 1 du plan
     cartons: [
-      { label: 'Instructions, at the door', main: true,
-        text: '“The master hid his last word in the Sun King’s chamber, and put out the sun to guard it. The room is strung with threads finer than hair: brush one, and the whole house knows. They show themselves only in the beam of a flashlight, and your phones will do. Light your way before you take a step, and cross to the far wall one at a time without touching a single thread. Whoever does goes back to the door and starts again. The word waits on the far side, for those who make it through.”' },
+      { label: { en: 'Instructions, at the door', fr: 'Consignes, à la porte' }, main: true,
+        text: {
+          en: '“The master hid his last word in the Sun King’s chamber, and put out the sun to guard it. The room is strung with threads finer than hair: brush one, and the whole house knows. They show themselves only in the beam of a flashlight, and your phones will do. Light your way before you take a step, and cross to the far wall one at a time without touching a single thread. Whoever does goes back to the door and starts again. The word waits on the far side, for those who make it through.”',
+          fr: '« Le maître a caché son dernier mot dans la chambre du Roi-Soleil, et a éteint le soleil pour le garder. La pièce est tendue de fils plus fins qu’un cheveu : effleurez-en un, et toute la maison le sait. Ils ne se montrent qu’au faisceau d’une lampe de poche, et vos téléphones feront l’affaire. Éclairez votre chemin avant chaque pas, et traversez jusqu’au mur du fond un par un sans toucher un seul fil. Qui en touche un retourne à la porte et recommence. Le mot attend de l’autre côté, pour ceux qui passent. »',
+        } },
     ],
-    inputLabel: 'The password',
+    inputLabel: { en: 'The password', fr: 'Le mot de passe' },
     inputMode: 'text',
     answers: ['eclipse'],
     clues: {
-      culprit: 'There was no flour, no grease and no onion on the killer’s hands.',
-      weapon: 'Every candlestick in the house stood where the servants had set it at dusk, each candle burned down to the very same height. Not one had been lifted, let alone swung.',
+      culprit: {
+        en: 'There was no flour, no grease and no onion on the killer’s hands.',
+        fr: 'Il n’y avait ni farine, ni graisse, ni oignon sur les mains du tueur.',
+      },
+      weapon: {
+        en: 'Every candlestick in the house stood where the servants had set it at dusk, each candle burned down to the very same height. Not one had been lifted, let alone swung.',
+        fr: 'Chaque chandelier de la maison était là où les domestiques l’avaient posé au crépuscule, chaque bougie consumée exactement à la même hauteur. Aucun n’avait été soulevé, encore moins brandi.',
+      },
     },
     eliminates: { culprit: 'cook', weapon: 'candlestick' },
   },
@@ -1058,6 +1285,12 @@ select.input { appearance: auto; -webkit-appearance: menulist; padding-right: 36
 .home-foot { margin: 34px 0 0; text-align: center; font-size: .78rem; letter-spacing: .06em; }
 .home-foot a { color: rgba(232,223,200,.55); text-decoration: underline; text-underline-offset: 3px; }
 .home-foot a:hover { color: var(--brass-light); }
+/* Sélecteur de langue (accueil) */
+.lang { display: flex; justify-content: flex-end; gap: 6px; margin: 10px 0 -16px; }
+.lang__opt { display: inline-flex; align-items: center; min-height: 32px; padding: 4px 10px; font-size: .66rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(232,223,200,.55); text-decoration: none; border: 1.5px solid transparent; border-radius: 2px; transition: color var(--ease), border-color var(--ease), background var(--ease); }
+.lang__opt:hover { color: var(--brass-light); }
+.lang__opt[aria-current="true"] { color: var(--brass-light); border-color: rgba(176,141,76,.45); background: rgba(176,141,76,.14); }
+.lang__opt:focus-visible { outline: 3px solid var(--paper); outline-offset: 2px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 /* ---------- Envoi au maître du jeu (écran de résultat) ---------- */
@@ -1100,14 +1333,14 @@ select.input { appearance: auto; -webkit-appearance: menulist; padding-right: 36
   .cards { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 }
 @media print {
-  .topbar, .tabbar, .btn, .addcode, .iconbtn, .board-actions, .home-foot { display: none !important; }
+  .topbar, .tabbar, .btn, .addcode, .iconbtn, .board-actions, .home-foot, .lang { display: none !important; }
   body { background: #fff; color: #000; }
 }
 </style>
 </head>
 <body data-screen="home">
 <a class="skip" href="#main" data-ui="skip">Skip to content</a>
-<noscript><p data-ui="noscript">This investigation needs JavaScript to run.</p></noscript>
+<noscript><p>This investigation needs JavaScript to run. · Cette enquête a besoin de JavaScript pour fonctionner.</p></noscript>
 
 <!-- Barre haute : blason, nom d'équipe, chronomètre (visible pendant l'enquête) -->
 <header class="topbar" id="topbar" hidden>
@@ -1124,6 +1357,8 @@ select.input { appearance: auto; -webkit-appearance: menulist; padding-right: 36
 
     <!-- Écran d'accueil -->
     <section id="screen-home" class="screen" aria-labelledby="home-title">
+      <!-- Choix de la langue : un lien ?lang=xx par entrée de CONFIG.languages, rendu par JS ; le choix est mémorisé -->
+      <nav class="lang" id="lang-switch"></nav>
       <header class="masthead">
         <p class="masthead__kicker" data-ui="kicker"></p>
         <h1 id="home-title" class="masthead__title" data-ui="title" tabindex="-1"></h1>
@@ -1204,7 +1439,7 @@ select.input { appearance: auto; -webkit-appearance: menulist; padding-right: 36
 </div>
 
 <!-- Barre basse mobile -->
-<nav class="tabbar" id="tabbar" hidden aria-label="Investigation">
+<nav class="tabbar" id="tabbar" hidden>
   <button type="button" class="tabbar__btn" id="tab-case" aria-pressed="true"><span data-ui="tabCase"></span></button>
   <button type="button" class="tabbar__btn" id="tab-notebook" aria-pressed="false"><span data-ui="tabNotebook"></span><span class="tabbar__badge" id="tab-badge" hidden>0</span></button>
 </nav>
@@ -1242,16 +1477,59 @@ select.input { appearance: auto; -webkit-appearance: menulist; padding-right: 36
 const $  = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-// Texte d'interface avec remplacement des {variables}
+// Texte d'interface avec remplacement des {variables} ; {variable|lc} = même valeur,
+// initiale en minuscule (« Le Notaire » → « le Notaire », pour les articles français)
+const lcFirst = (v) => String(v).charAt(0).toLowerCase() + String(v).slice(1);
 const t = (key, vars = {}) => {
   let s = key.split('.').reduce((o, k) => (o == null ? undefined : o[k]), UI) ?? key;
-  for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(v);
+  for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(v).split(`{${k}|lc}`).join(lcFirst(v));
   return s;
 };
 // Normalisation des réponses : minuscules, sans accents, sans espaces
 const normalize = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, '');
 const desktopQuery = window.matchMedia('(min-width: 1024px)');
 const isDesktop = () => desktopQuery.matches;
+
+/* ---------- Langue ----------
+   Priorité : ?lang=xx dans l'URL (alors mémorisé), puis le dernier choix
+   mémorisé (chateau.lang), puis la langue du navigateur, puis
+   CONFIG.defaultLang. Les textes du bloc de données sont des { en, fr } :
+   localize() les remplace en place par la langue choisie, une fois pour
+   toutes, avant tout rendu. Changer de langue = recharger la page avec
+   ?lang=xx (liens en tête de l'accueil). */
+const LANGS = Object.keys(CONFIG.languages);
+const LANG_KEY = CONFIG.storagePrefix + 'lang';
+const LANG = (() => {
+  const fromUrl = new URLSearchParams(location.search).get('lang');
+  let stored = null;
+  try { stored = localStorage.getItem(LANG_KEY); } catch { /* stockage indisponible */ }
+  const browser = (navigator.language || '').slice(0, 2).toLowerCase();
+  const lang = [fromUrl, stored, browser, CONFIG.defaultLang].find((l) => LANGS.includes(l)) || LANGS[0];
+  if (fromUrl === lang && stored !== lang) { try { localStorage.setItem(LANG_KEY, lang); } catch { /* idem */ } }
+  return lang;
+})();
+// Typographie par langue, appliquée aux textes traduits. Français : espaces insécables
+// avant ? ! : ; » et après «, pour ne pas laisser une ponctuation seule en début de ligne.
+const TYPOGRAPHY = {
+  fr: (s) => s.replace(/ ([?!:;»])/g, '\u00a0$1').replace(/« /g, '«\u00a0'),
+};
+const isLangObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v) && 'en' in v && Object.keys(v).every((k) => LANGS.includes(k));
+// Valeur retenue d'un { en, fr } : chaîne ou tableau de chaînes (lettre d'accueil)
+const typeset = (v) => (Array.isArray(v) ? v.map(typeset) : typeof v === 'string' && TYPOGRAPHY[LANG] ? TYPOGRAPHY[LANG](v) : v);
+// Remplace en place chaque { en, fr } par la langue courante (repli : anglais)
+function localize(node) {
+  if (Array.isArray(node)) { node.forEach((v, i) => { node[i] = localize(v); }); return node; }
+  if (node !== null && typeof node === 'object') {
+    if (isLangObject(node)) return typeset(node[LANG] ?? node.en);
+    for (const k of Object.keys(node)) node[k] = localize(node[k]);
+    return node;
+  }
+  return node;
+}
+[UI, suspects, weapons, pieces, houseHistory, rooms].forEach(localize);
+document.documentElement.lang = LANG;
+document.title = t('pageTitle');
+$('meta[name="description"]')?.setAttribute('content', t('pageDescription'));
 
 // Les trois axes de l'enquête, reliés aux tableaux de cartes.
 // `clue` : l'axe reçoit un indice par salle et l'équipe barre elle-même ses
@@ -1410,11 +1688,12 @@ function formatTime(ms) {
 }
 // Pénalité en toutes lettres (« 3 minutes », « 45 seconds », « 1 min 30 s ») ou,
 // avec `short`, en abrégé pour les boutons et libellés (« 3 min », « 45 s »).
+// Les unités en toutes lettres viennent de UI.minute(s) / UI.second(s) ; « min » et « s » sont communs.
 function formatPenalty(seconds, short = false) {
   const m = Math.floor(seconds / 60), s = seconds % 60;
   if (m && s) return `${m} min ${s} s`;
   if (short) return m ? `${m} min` : `${s} s`;
-  return m ? `${m} minute${m > 1 ? 's' : ''}` : `${s} second${s > 1 ? 's' : ''}`;
+  return m ? `${m} ${t(m > 1 ? 'minutes' : 'minute')}` : `${s} ${t(s > 1 ? 'seconds' : 'second')}`;
 }
 // Variables de pénalité passées aux textes des indices : {penalty} et {penaltyShort}
 const penaltyVars = (seconds = CONFIG.hintPenaltySeconds) => ({ penalty: formatPenalty(seconds), penaltyShort: formatPenalty(seconds, true) });
@@ -1534,6 +1813,12 @@ function renderHome() {
   // Textes statiques marqués data-ui
   $$('[data-ui]').forEach((node) => { node.textContent = t(node.dataset.ui); });
   el.teamInput.placeholder = t('teamPlaceholder');
+  el.tabbar.setAttribute('aria-label', t('tabbarLabel'));
+  // Sélecteur de langue : un lien ?lang=xx par langue, la langue courante marquée (voir le bloc Langue)
+  const langSwitch = $('#lang-switch');
+  langSwitch.setAttribute('aria-label', t('langLabel'));
+  langSwitch.innerHTML = Object.entries(CONFIG.languages).map(([code, label]) =>
+    `<a class="lang__opt" href="?lang=${code}" hreflang="${code}" lang="${code}"${code === LANG ? ' aria-current="true"' : ''}>${esc(label)}</a>`).join('');
   // Lettre d'accueil, texte exact
   el.letter.querySelectorAll('p').forEach((p) => p.remove());
   UI.welcome.forEach((txt) => { const p = document.createElement('p'); p.textContent = txt; el.letter.appendChild(p); });

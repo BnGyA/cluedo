@@ -1,7 +1,8 @@
 # Château Guillermo — jeu d'enquête grandeur nature
 
 Web app 100 % statique (un seul `index.html`, aucun build, aucun backend), pensée
-pour être jouée sur téléphone et hébergée sur GitHub Pages.
+pour être jouée sur téléphone et hébergée sur GitHub Pages. Interface et contenu
+en anglais ou en français (voir « Deux langues »).
 
 ## Arborescence
 
@@ -26,8 +27,14 @@ Tout est dans le premier bloc `<script>` de `index.html` :
 - `CONFIG` : réglages (dossier des cartes, plan par défaut, taille du classement,
   `revealSolutionOnFailure`, `hintPenaltySeconds`).
 - `UI` : tous les textes de l'interface, dont la lettre d'accueil (`UI.welcome`)
-  et les libellés du blason (`UI.crest`).
-- `suspects`, `weapons`, `pieces` : 7 cartes par axe, `{ id, name, isSolution }`.
+  et les libellés du blason (`UI.crest`). Chaque texte est une chaîne (même
+  valeur dans les deux langues) ou un objet `{ en: '…', fr: '…' }` ; la règle
+  vaut pour tout le bloc de données, cartes et salles comprises. Les accolades
+  `{n}` sont remplacées à l'affichage ; `{n|lc}` donne la même valeur avec
+  l'initiale en minuscule (« Le Notaire » → « le Notaire », pour les articles
+  français au milieu d'une phrase).
+- `suspects`, `weapons`, `pieces` : 7 cartes par axe, `{ id, name, isSolution }`,
+  `name` bilingue.
   Mettre `isSolution: true` sur **une** carte par axe pour définir la solution.
   Les suspects portent en plus `tagline` (clin d'œil à la vie de la boîte),
   `motive` (la raison qui aurait pu pousser au meurtre) et, pour le coupable,
@@ -54,6 +61,30 @@ Tout est dans le premier bloc `<script>` de `index.html` :
   au choix, `hints`. `clues` et `eliminates` n'ont que deux axes, `culprit`
   et `weapon`. Les réponses sont comparées après normalisation (minuscules,
   sans accents, sans espaces). `eliminates` n'est jamais affiché au joueur.
+
+### Deux langues
+
+Anglais et français, choisis au chargement dans cet ordre : `?lang=fr` (ou
+`en`) dans l'URL, sinon le dernier choix mémorisé (`chateau.lang`), sinon la
+langue du navigateur, sinon `CONFIG.defaultLang`. Deux liens en tête de
+l'accueil (« English » / « Français », libellés dans `CONFIG.languages`)
+rechargent la page avec `?lang=xx` ; le choix est mémorisé et la partie en
+cours n'est pas perdue. La langue se choisit sur l'accueil : une fois
+l'enquête lancée, seul un `?lang=xx` dans l'URL la change.
+
+Tout texte joueur du bloc de données peut être un `{ en, fr }` : `localize()`
+(script principal) le remplace en place par la langue courante avant le premier
+rendu, le reste du code ne connaît que des chaînes. Une traduction manquante
+retombe sur l'anglais. En français, les espaces avant `? ! : ; »` et après `«`
+sont rendus insécables à l'affichage : inutile de les taper dans les données.
+Les unités de la pénalité en toutes lettres viennent de `UI.minute(s)` /
+`UI.second(s)`.
+
+Ne changent pas de langue : les `id`, les plans et zones, les `answers` (elles
+nomment ce que l'équipe trouve physiquement sur place : boules CASTLE, recettes
+anglaises de la cuisine, lettre de Marie-Antoinette imprimée en anglais) et le
+code de résultat. Le `<title>`, la description et l'attribut `lang` de la
+page suivent la langue choisie (`UI.pageTitle`, `UI.pageDescription`).
 
 ### Indices payants
 
@@ -194,3 +225,4 @@ reste marqué `// LEADERBOARD HOOK` dans `saveResult()`.
   miniature devant le nom d'équipe).
 - `chateau.board` : codes de résultat reçus par le maître du jeu (classement
   final). Indépendant de la partie en cours sur l'appareil.
+- `chateau.lang` : dernière langue choisie (`en` / `fr`).
