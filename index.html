@@ -138,6 +138,18 @@ const UI = {
   },
   nextRoom: { en: 'Continue to the next room', fr: 'Passer à la pièce suivante' },
   toAccusation: { en: 'Proceed to the final accusation', fr: 'Passer à l’accusation finale' },
+  // Aide unique (première épreuve) : le joueur veut passer à la pièce suivante sans avoir rien barré
+  coachTitle: { en: '{n} clues not yet used in your notebook.', fr: '{n} indices non exploités dans votre carnet.' },
+  coachBody: {
+    en: 'Cross out there the suspect and the weapon these clues rule out. The fewer cards remain, the easier the final accusation.',
+    fr: 'Barrez-y le suspect et l’arme que ces indices écartent. Moins il reste de cartes, plus l’accusation finale sera simple.',
+  },
+  coachDismiss: { en: 'Later', fr: 'Plus tard' },
+  // Indices reçus mais pas encore traduits en cartes barrées : badge de l'onglet, rappel sous « Le mot du commissaire »
+  unusedClue:  { en: '1 clue not yet used in your notebook', fr: '1 indice non exploité dans votre carnet' },
+  unusedClues: { en: '{n} clues not yet used in your notebook', fr: '{n} indices non exploités dans votre carnet' },
+  notebookOpen:  { en: 'Open my notebook', fr: 'Ouvrir mon carnet' },   // mobile : ouvre le carnet
+  notebookCards: { en: 'Show me the cards', fr: 'Voir les cartes' },    // grand écran : le carnet est déjà là, on défile jusqu'aux cartes
   axisCulprit: { en: 'Culprit', fr: 'Coupable' },
   axisWeapon: { en: 'Weapon', fr: 'Arme' },
   axisRoom: { en: 'Room', fr: 'Pièce' },
@@ -1154,10 +1166,62 @@ select.input { appearance: auto; -webkit-appearance: menulist; padding-right: 36
 .clue-note__axis { font-size: .62rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--sage); }
 .clue-note__text { font-family: var(--font-title); font-size: 1.02rem; line-height: 1.45; }
 .reveal__room { margin: 14px 0 0; font-size: .95rem; color: rgba(232,223,200,.85); }
+/* Rappel (salle 2 et suivantes) : l'équipe a des indices qu'elle n'a pas encore traduits en cartes barrées */
+.reveal__todo {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px;
+  margin: 16px 0 0; padding: 10px 12px;
+  font-size: .9rem; color: var(--paper);
+  border: 1px dashed var(--brass-dark); background: rgba(176,141,76,.08);
+}
+.reveal__todo .linkbtn { color: var(--brass-light); font-weight: 700; }
 .reveal .btn { margin-top: 16px; }
 @media (prefers-reduced-motion: no-preference) {
   .reveal { animation: rise .45s ease-out both; }
   @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+}
+
+/* ---------- Aide unique : rien de barré au moment de quitter la première épreuve ----------
+   Voile sombre au-dessus du dossier et de la barre haute (z 5, plus tard dans le DOM),
+   sous la barre basse (z 6) dont l'onglet « Mon carnet » reste cliquable et pulse. */
+.coach { position: fixed; inset: 0; z-index: 5; background: rgba(5,10,8,.8); }
+.coach__card {
+  position: absolute; left: 12px; right: 12px; margin-left: auto; max-width: 520px;
+  bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 20px);
+  padding: 16px 16px 14px;
+  background-color: var(--paper); background-image: var(--grain); color: var(--ink);
+  border: 1px solid var(--brass-dark); border-left: 4px solid var(--brass);
+  box-shadow: var(--shadow-sheet);
+}
+/* Pointe vers l'onglet « Mon carnet » (moitié droite de la barre basse) ; sa moitié haute passe sous la carte */
+.coach__caret {
+  position: absolute; left: 75%; bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 12px);
+  width: 16px; height: 16px; background: var(--paper);
+  border-right: 1px solid var(--brass-dark); border-bottom: 1px solid var(--brass-dark);
+  transform: translateX(-50%) rotate(45deg);
+}
+.coach__title { margin: 0; font-family: var(--font-title); font-size: 1.15rem; line-height: 1.3; color: var(--ink); }
+.coach__body { margin: 8px 0 0; font-size: .92rem; line-height: 1.45; color: var(--ink-soft); }
+.coach__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 14px; }
+.coach__actions .linkbtn { color: var(--ink-soft); font-size: .88rem; }
+.coach__card :focus-visible { outline-color: var(--ink); }
+body.coach-on .tabbar__btn { color: rgba(232,223,200,.28); }
+body.coach-on #tab-case::before { opacity: .3; }
+body.coach-on #tab-notebook { color: var(--brass-light); }
+body.coach-on #tab-notebook::after {
+  content: ''; position: absolute; inset: 7px 10px; pointer-events: none;
+  border: 2px solid var(--brass-light); border-radius: 3px; box-shadow: 0 0 16px rgba(212,181,119,.65);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .coach__card, .coach__caret { animation: rise .35s ease-out both; }
+  body.coach-on #tab-notebook::after { animation: coach-pulse 1.3s ease-in-out infinite; }
+  @keyframes coach-pulse { 50% { border-color: var(--brass); box-shadow: 0 0 4px rgba(212,181,119,.2); } }
+}
+@media (min-width: 1024px) {
+  /* Pas de barre basse : la carte se pose dans la colonne du dossier (alignée sur .layout : 1200px max, marge 24px)
+     et c'est le carnet, déjà visible à droite, qui est mis en lumière. */
+  .coach__card { left: max(24px, calc(50% - 576px)); right: auto; bottom: auto; top: 50%; width: 440px; transform: translateY(-50%); }
+  .coach__caret { display: none; }
+  body.coach-on .notebook { z-index: 6; box-shadow: 0 0 0 3px var(--brass-light), 0 0 36px rgba(212,181,119,.5), var(--shadow-sheet); }
 }
 
 /* Liste d'indices par salle (carnet et accusation) */
@@ -1467,6 +1531,19 @@ select.input { appearance: auto; -webkit-appearance: menulist; padding-right: 36
   <button type="button" class="tabbar__btn" id="tab-notebook" aria-pressed="false"><span data-ui="tabNotebook"></span><span class="tabbar__badge" id="tab-badge" hidden>0</span></button>
 </nav>
 
+<!-- Aide unique (première épreuve) : rien de barré au moment de passer à la pièce suivante. Textes remplis à l'affichage. -->
+<div class="coach" id="coach" role="dialog" aria-labelledby="coach-title" aria-describedby="coach-body" hidden>
+  <div class="coach__caret" aria-hidden="true"></div>
+  <div class="coach__card">
+    <p class="coach__title" id="coach-title"></p>
+    <p class="coach__body" id="coach-body"></p>
+    <div class="coach__actions">
+      <button type="button" class="btn btn--ink btn--primary" id="coach-open"></button>
+      <button type="button" class="linkbtn" id="coach-dismiss"></button>
+    </div>
+  </div>
+</div>
+
 <!-- Plan agrandi -->
 <dialog class="map-dialog" id="map-dialog" aria-labelledby="map-dialog-title">
   <div class="map-dialog__bar">
@@ -1607,6 +1684,7 @@ const el = {
   screens: { home: $('#screen-home'), room: $('#screen-room'), accusation: $('#screen-accusation'), result: $('#screen-result'), board: $('#screen-board') },
   notebook: $('#notebook'),
   tabbar: $('#tabbar'), tabCase: $('#tab-case'), tabNotebook: $('#tab-notebook'), tabBadge: $('#tab-badge'),
+  coach: $('#coach'),
   homeForm: $('#home-form'), teamInput: $('#team-name'), homeFeedback: $('#home-feedback'),
   homeCrestSvg: $('#home-crest-svg'), homeCrestName: $('#home-crest-name'), homeCrestBlazon: $('#home-crest-blazon'),
   homeBoard: $('#home-board'), homeBoardTable: $('#home-board-table'),
@@ -1787,6 +1865,12 @@ function shake(node) {
 /* ---------- Helpers de jeu ---------- */
 const solvedRooms = () => rooms.slice(0, progress?.solved || 0);
 const clueCount = () => (progress?.solved || 0) * CLUE_AXES.length;
+// Chaque salle résolue écarte un suspect et une arme : par axe, salles résolues − cartes barrées (jamais négatif)
+const unusedClueCount = () => {
+  const solved = progress?.solved || 0;
+  return CLUE_AXES.reduce((sum, ax) => sum + Math.max(0, solved - ax.list.filter((c) => isStruck(ax, c)).length), 0);
+};
+const unusedText = (n) => t(n === 1 ? 'unusedClue' : 'unusedClues', { n });
 // Barrage manuel : réservé aux axes à indices (une ancienne sauvegarde avec une pièce barrée est ignorée)
 const isStruck = (axis, card) => axis.clue && !!cardState[`${axis.dir}/${card.id}`];
 // Pièce « fouillée » : une salle résolue porte le même id. Grisée par l'app, hors du choix du joueur.
@@ -1876,7 +1960,7 @@ function renderHomeCrest() {
   el.homeCrestBlazon.textContent = CREST_KEYS.map((k) => crestLabel(k, homeCrest[k])).join(' · ');
 }
 function startGame(team) {
-  progress = { team, crest: { ...homeCrest }, startedAt: Date.now(), finishedAt: null, solved: 0, hints: {}, revealPending: false, result: null };
+  progress = { team, crest: { ...homeCrest }, startedAt: Date.now(), finishedAt: null, solved: 0, hints: {}, revealPending: false, coachSeen: false, result: null };
   cardState = {};
   persist(KEY.progress, progress);
   persist(KEY.cards, cardState);
@@ -1888,7 +1972,7 @@ function enterGameChrome() {
   el.topbarCrest.innerHTML = crestSVG(progress.crest, progress.team, 34);
   el.topbarTeam.textContent = progress.team;
   renderNotebook();
-  updateBadge();
+  updateTodo();
   startTimerLoop();
 }
 // Choisit l'écran à afficher d'après la progression sauvegardée
@@ -2011,6 +2095,10 @@ function renderReveal(room, index) {
       ${CLUE_AXES.map((ax) => `<li class="clue-note"><span class="clue-note__axis">${esc(t(ax.label))}</span><span class="clue-note__text">${esc(room.clues[ax.key])}</span></li>`).join('')}
     </ul>
     ${pieces.some((p) => p.id === room.id) ? `<p class="reveal__room">${esc(t('revealRoom', { room: room.name }))}</p>` : ''}
+    ${index >= 1 ? `<p class="reveal__todo" id="reveal-todo"${unusedClueCount() ? '' : ' hidden'}>
+      <span id="reveal-todo-text">${esc(unusedText(unusedClueCount()))}</span>
+      <button type="button" class="linkbtn" id="btn-reveal-notebook">${esc(t(isDesktop() ? 'notebookCards' : 'notebookOpen'))}</button>
+    </p>` : ''}
     <button type="button" class="btn btn--primary btn--block" id="btn-continue">${esc(t(last ? 'toAccusation' : 'nextRoom'))}</button>
   </section>`;
 }
@@ -2030,7 +2118,8 @@ function renderRoom(index) {
     </article>`;
   wireMap(el.screens.room, room);
   if (solved) {
-    $('#btn-continue').addEventListener('click', acknowledgeClues);
+    $('#btn-continue').addEventListener('click', () => onContinue(index));
+    $('#btn-reveal-notebook')?.addEventListener('click', revealNotebook);
   } else {
     $('#answer-form').addEventListener('submit', (e) => onAnswerSubmit(e, room, index));
     wireHints(room);
@@ -2059,10 +2148,41 @@ function onAnswerSubmit(e, room, index) {
   progress.solved = index + 1;
   progress.revealPending = true;
   persist(KEY.progress, progress);
-  renderNotebook(); updateBadge();
+  renderNotebook(); updateTodo();
   renderRoom(index);
   $('#reveal-title')?.focus({ preventScroll: true });
   $('.reveal')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+// Première épreuve : si rien n'est barré, on retient le joueur une fois pour lui montrer le carnet
+function onContinue(index) {
+  const nothingStruck = Object.keys(cardState).length === 0;
+  if (index === 0 && nothingStruck && !progress.coachSeen) { showCoach(); return; }
+  acknowledgeClues();
+}
+function showCoach() {
+  progress.coachSeen = true;                  // marqué dès l'affichage : jamais deux fois, même après rafraîchissement
+  persist(KEY.progress, progress);
+  $('#coach-title').textContent = t('coachTitle', { n: unusedClueCount() });
+  $('#coach-body').textContent = t('coachBody');
+  $('#coach-open').textContent = t(isDesktop() ? 'notebookCards' : 'notebookOpen');
+  $('#coach-dismiss').textContent = t('coachDismiss');
+  el.coach.hidden = false;
+  el.body.classList.add('coach-on');
+  el.main.inert = true;                       // le dossier (et son bouton « pièce suivante ») attend ; la barre basse reste active
+  $('#coach-open').focus();
+}
+// Amène le joueur à ses cartes : ouvre le carnet (mobile) ou y fait défiler (grand écran, carnet déjà visible)
+function revealNotebook() {
+  if (!isDesktop()) { openNotebook(); return; }
+  const cards = $('#nb-cards');
+  if (cards) { cards.scrollIntoView({ block: 'start', behavior: 'smooth' }); cards.focus({ preventScroll: true }); }
+}
+function hideCoach({ openIt = false } = {}) {
+  if (el.coach.hidden) return;
+  el.coach.hidden = true;
+  el.body.classList.remove('coach-on');
+  el.main.inert = false;
+  if (openIt) revealNotebook(); else $('#btn-continue')?.focus();
 }
 function acknowledgeClues() {
   progress.revealPending = false;
@@ -2187,7 +2307,7 @@ function renderNotebook() {
       ${renderCluesByRoom()}
     </section>
     <section class="nb-section" aria-labelledby="nb-cards">
-      <div class="nb-section__head"><h3 id="nb-cards" class="nb-section__title">${esc(t('cardsTitle'))}</h3></div>
+      <div class="nb-section__head"><h3 id="nb-cards" class="nb-section__title" tabindex="-1">${esc(t('cardsTitle'))}</h3></div>
       <p class="muted">${esc(t('cardsHelp'))}</p>
       ${AXES.map((ax) => `
         <section class="nb-group" aria-labelledby="nb-group-${ax.dir}">
@@ -2220,7 +2340,7 @@ function toggleCard(btn) {
   const struck = !!cardState[key];
   btn.classList.toggle('is-struck', struck);
   btn.setAttribute('aria-pressed', String(struck));
-  updateCounts();
+  updateCounts(); updateTodo();
   if (currentScreen === 'accusation') updateAccusationDefaults();
 }
 function updateCounts() {
@@ -2229,16 +2349,20 @@ function updateCounts() {
     if (node) node.textContent = t('remaining', { n: activeCards(ax).length, total: ax.list.length });
   });
 }
-function updateBadge() {
-  const n = clueCount();
+// Badge de l'onglet et rappel du panneau : indices non exploités, à zéro dès que les cartes sont barrées
+function updateTodo() {
+  const n = unusedClueCount();
   el.tabBadge.textContent = n;
   el.tabBadge.hidden = n === 0;
+  el.tabNotebook.setAttribute('aria-label', n ? `${t('tabNotebook')}, ${unusedText(n)}` : t('tabNotebook'));
+  const todo = $('#reveal-todo');
+  if (todo) { todo.hidden = n === 0; $('#reveal-todo-text', todo).textContent = unusedText(n); }
 }
 function resetCards() {
   cardState = {};
   persist(KEY.cards, cardState);
   $$('button.card', el.notebook).forEach((btn) => { btn.classList.remove('is-struck'); btn.setAttribute('aria-pressed', 'false'); });
-  updateCounts();
+  updateCounts(); updateTodo();
   if (currentScreen === 'accusation') updateAccusationDefaults();
 }
 // Efface la partie en cours (le classement local est conservé)
@@ -2619,8 +2743,16 @@ function wireStatic() {
     setFeedback(el.homeFeedback, '');
     startGame(team);
   });
-  el.tabCase.addEventListener('click', closeNotebook);
-  el.tabNotebook.addEventListener('click', () => { el.notebook.classList.contains('is-open') ? closeNotebook() : openNotebook(); });
+  el.tabCase.addEventListener('click', () => { hideCoach(); closeNotebook(); });
+  el.tabNotebook.addEventListener('click', () => {
+    if (!el.coach.hidden) { hideCoach({ openIt: true }); return; }
+    el.notebook.classList.contains('is-open') ? closeNotebook() : openNotebook();
+  });
+  // Aide unique : ouvrir le carnet, remettre à plus tard (bouton, voile ou Échap)
+  $('#coach-open').addEventListener('click', () => hideCoach({ openIt: true }));
+  $('#coach-dismiss').addEventListener('click', () => hideCoach());
+  el.coach.addEventListener('click', (e) => { if (e.target === el.coach) hideCoach(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !el.coach.hidden) { e.preventDefault(); hideCoach(); } });
   // Délégation : cartes, réinitialisation, abandon
   el.notebook.addEventListener('click', (e) => {
     const seal = e.target.closest('.card__seal');
@@ -2676,7 +2808,7 @@ const DEV = (() => {
   // Garantit une partie en cours (nom saisi sur l'accueil, sinon « Dev team ») et quitte un éventuel #board
   const ensureGame = () => {
     if (!progress) {
-      progress = { team: el.teamInput.value.trim() || 'Dev team', crest: { ...homeCrest }, startedAt: Date.now(), finishedAt: null, solved: 0, hints: {}, revealPending: false, result: null };
+      progress = { team: el.teamInput.value.trim() || 'Dev team', crest: { ...homeCrest }, startedAt: Date.now(), finishedAt: null, solved: 0, hints: {}, revealPending: false, coachSeen: false, result: null };
       cardState = {}; persist(KEY.cards, cardState);
     }
     progress.finishedAt = null; progress.result = null;
@@ -2689,7 +2821,7 @@ const DEV = (() => {
     progress.solved = solved ? index + 1 : index;
     progress.revealPending = solved;
     persist(KEY.progress, progress);
-    renderNotebook(); updateBadge();
+    renderNotebook(); updateTodo();
     route();
   };
   const goAccusation = () => goRoom(rooms.length, false);
