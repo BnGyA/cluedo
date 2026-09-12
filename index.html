@@ -29,7 +29,7 @@ const CONFIG = {
   revealSolutionOnFailure: false,   // afficher la vraie solution après une accusation fausse ?
                                     // (false par défaut : évite les fuites entre équipes)
   leaderboardSize: 20,              // nombre de lignes du classement local
-  hintPenaltySeconds: 30,           // secondes ajoutées au chrono par indice demandé (voir `hints` des salles)
+  hintPenaltySeconds: 180,          // secondes ajoutées au chrono par indice demandé (voir `hints` des salles)
 };
 
 /* ---------- Textes de l'interface ----------
@@ -72,16 +72,17 @@ const UI = {
   answerButton: 'Submit to the chief detective',
   emptyAnswer: 'Write an answer first.',
   wrongAnswer: 'The chief detective shakes his head. That is not it. Look again.',
-  // Indices payants d'une salle (champ `hints` de `rooms`) : {seconds} = CONFIG.hintPenaltySeconds
+  // Indices payants d'une salle (champ `hints` de `rooms`) : {penalty} et {penaltyShort} =
+  // CONFIG.hintPenaltySeconds en toutes lettres (« 3 minutes ») et en abrégé (« 3 min »), voir formatPenalty
   hintTitle: 'Need a hand?',
-  hintHelp: 'The chief detective can put you on the right track, at a price: every hint adds {seconds} seconds to your final time.',
-  hintAsk: 'Ask for a hint (+{seconds} s)',
-  hintAskAgain: 'Ask for another hint (+{seconds} s)',
-  hintConfirmText: 'This adds {seconds} seconds to your final time. Ask anyway?',
+  hintHelp: 'The chief detective can put you on the right track, at a price: every hint adds {penalty} to your final time.',
+  hintAsk: 'Ask for a hint (+{penaltyShort})',
+  hintAskAgain: 'Ask for another hint (+{penaltyShort})',
+  hintConfirmText: 'This adds {penalty} to your final time. Ask anyway?',
   hintConfirmYes: 'Yes, I need it',
   hintConfirmNo: 'Not yet',
-  hintLabel: 'Hint from the chief detective · +{seconds} s',
-  hintLabelN: 'Hint {n} of {total} · +{seconds} s',
+  hintLabel: 'Hint from the chief detective · +{penaltyShort}',
+  hintLabelN: 'Hint {n} of {total} · +{penaltyShort}',
   hintExhausted: 'The chief detective has nothing more to add.',
   revealTitle: 'Word from the chief detective',
   revealIntro: 'Well played. Two clues have been added to your notebook.',
@@ -136,8 +137,8 @@ const UI = {
   solutionWas: 'The truth: {culprit}, with {weapon}, in the {room}.',
   finalTime: 'Final time',
   // Sous le temps final, seulement si l'équipe a demandé des indices
-  hintsSummary: 'Including {seconds} seconds of penalty for {n} hints.',
-  hintsSummaryOne: 'Including {seconds} seconds of penalty for one hint.',
+  hintsSummary: 'Including {penalty} of penalty for {n} hints.',
+  hintsSummaryOne: 'Including {penalty} of penalty for one hint.',
   // Envoi du résultat au maître du jeu : copie du code, envoyé sur Slack
   codeTitle: 'Your result code',
   codeHelp: 'Copy this code and send it to Benjamin on Slack so your result counts in the final ranking. It encodes your team name, your crest, your time and your verdict.',
@@ -358,6 +359,8 @@ const rooms = [
     inputLabel: 'The vintage',
     inputMode: 'numeric',
     answers: ['2008'],
+    // VO de l'indice : « Trie les bouteilles par date et regarde en dessous. »
+    hints: ['Sort the bottles by the year on their labels, oldest first, then look underneath each one. Read the marks in that order: they give the vintage.'],
     clues: {
       culprit: 'At nine, as every night, the whole house heard the usual explosion from the attic workshop, and the usual “it almost worked”. The master died in that very minute.',
       weapon: 'No poison ever passed the master’s lips: the dogs finished his plate and his last glass of port, and they are in perfect health this morning.',
@@ -381,6 +384,8 @@ const rooms = [
     inputLabel: 'Your answer',
     inputMode: 'text',
     answers: ['banquet'],
+    // VO de l'indice : « Trouve les sept recettes, la première lettre de chaque recette te donnera un mot. »
+    hints: ['Find the seven recipes hidden around the kitchen, one for each day of the week. Put them back in order, Monday to Sunday: the first letter of each dish spells the word.'],
     clues: {
       culprit: 'Whoever did this had never studied medicine, and could not have told a pulse from a hiccup.',
       weapon: 'The body bore not a single cut. The dagger never left its sheath, and no other blade came near the master that night.',
@@ -440,6 +445,8 @@ const rooms = [
     inputLabel: 'The word for the guard',
     inputMode: 'text',
     answers: ['varennes'],
+    // VO de l'indice : « Retrouve la grille sous son oreiller, mets-la par-dessus la lettre et trouve le mot pour le garde. »
+    hints: ['Look under her pillow: a card pierced with windows is hidden there. Lay it over the letter, fleur-de-lis on fleur-de-lis. The words left showing tell you the word for the guard.'],
     clues: {
       culprit: 'The door was forced. The killer had none of the keys of this house, and the great ring of keys never left its hook.',
       weapon: 'Whatever else befell the master, his neck was spared: no rope, no cord, not so much as a bruise.',
@@ -1401,6 +1408,16 @@ function formatTime(ms) {
   const mm = String(m).padStart(2, '0'), ss = String(sec).padStart(2, '0');
   return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
+// Pénalité en toutes lettres (« 3 minutes », « 45 seconds », « 1 min 30 s ») ou,
+// avec `short`, en abrégé pour les boutons et libellés (« 3 min », « 45 s »).
+function formatPenalty(seconds, short = false) {
+  const m = Math.floor(seconds / 60), s = seconds % 60;
+  if (m && s) return `${m} min ${s} s`;
+  if (short) return m ? `${m} min` : `${s} s`;
+  return m ? `${m} minute${m > 1 ? 's' : ''}` : `${s} second${s > 1 ? 's' : ''}`;
+}
+// Variables de pénalité passées aux textes des indices : {penalty} et {penaltyShort}
+const penaltyVars = (seconds = CONFIG.hintPenaltySeconds) => ({ penalty: formatPenalty(seconds), penaltyShort: formatPenalty(seconds, true) });
 // Indices payants : demandés dans une salle, au total, et la pénalité qui en découle
 const hintsTaken = (room) => progress?.hints?.[room.id] || 0;
 const hintsTotal = () => Object.values(progress?.hints || {}).reduce((sum, n) => sum + n, 0);
@@ -1621,8 +1638,8 @@ function renderAnswerForm(room) {
    nombre demandé par salle vit dans progress.hints et survit donc à un
    rafraîchissement. Le bloc n'apparaît que tant que la salle n'est pas résolue. */
 function renderHintCarton(text, n, total) {
-  const seconds = CONFIG.hintPenaltySeconds;
-  const label = total > 1 ? t('hintLabelN', { n, total, seconds }) : t('hintLabel', { seconds });
+  const vars = penaltyVars();
+  const label = total > 1 ? t('hintLabelN', { n, total, ...vars }) : t('hintLabel', vars);
   return `<blockquote class="carton carton--hint" tabindex="-1">
     <p class="carton__label">${esc(label)}</p>
     <p class="carton__text">${esc(text)}</p>
@@ -1631,22 +1648,22 @@ function renderHintCarton(text, n, total) {
 function renderHints(room) {
   const hints = room.hints || [];
   if (!hints.length) return '';
-  const seconds = CONFIG.hintPenaltySeconds;
+  const vars = penaltyVars();
   const taken = Math.min(hintsTaken(room), hints.length);
   const left = hints.length - taken;
   return `<section class="hints" id="hints" aria-labelledby="hints-title">
     <h3 id="hints-title" class="hints__title">${esc(t('hintTitle'))}</h3>
-    <p class="hints__help">${esc(t('hintHelp', { seconds }))}</p>
+    <p class="hints__help">${esc(t('hintHelp', vars))}</p>
     <div class="hints__list">${hints.slice(0, taken).map((h, i) => renderHintCarton(h, i + 1, hints.length)).join('')}</div>
     ${left ? `
     <div class="confirm confirm--hint" id="hint-confirm" hidden>
-      <p>${esc(t('hintConfirmText', { seconds }))}</p>
+      <p>${esc(t('hintConfirmText', vars))}</p>
       <div class="confirm__actions">
         <button type="button" class="btn btn--ink" id="btn-hint-no">${esc(t('hintConfirmNo'))}</button>
         <button type="button" class="btn btn--ink btn--primary" id="btn-hint-yes">${esc(t('hintConfirmYes'))}</button>
       </div>
     </div>
-    <button type="button" class="btn btn--ink btn--block" id="btn-hint">${esc(t(taken ? 'hintAskAgain' : 'hintAsk', { seconds }))}</button>`
+    <button type="button" class="btn btn--ink btn--block" id="btn-hint">${esc(t(taken ? 'hintAskAgain' : 'hintAsk', vars))}</button>`
     : `<p class="hints__done">${esc(t('hintExhausted'))}</p>`}
   </section>`;
 }
@@ -2114,7 +2131,7 @@ function renderResult() {
       ${revealLine}
       ${solutionLine}
       <dl class="result__stats"><dt>${esc(t('finalTime'))}</dt><dd>${formatTime(r.seconds * 1000)}</dd></dl>
-      ${r.hints ? `<p class="result__penalty">${esc(t(r.hints === 1 ? 'hintsSummaryOne' : 'hintsSummary', { n: r.hints, seconds: r.hints * CONFIG.hintPenaltySeconds }))}</p>` : ''}
+      ${r.hints ? `<p class="result__penalty">${esc(t(r.hints === 1 ? 'hintsSummaryOne' : 'hintsSummary', { n: r.hints, ...penaltyVars(r.hints * CONFIG.hintPenaltySeconds) }))}</p>` : ''}
       <section class="result__code" aria-labelledby="code-title">
         <h3 id="code-title">${esc(t('codeTitle'))}</h3>
         <p class="muted">${esc(t('codeHelp'))}</p>

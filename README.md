@@ -59,15 +59,16 @@ Tout est dans le premier bloc `<script>` de `index.html` :
 
 Une salle peut porter `hints`, un tableau de coups de pouce dans l'ordre où
 ils se débloquent. Sous le formulaire de réponse, un bloc « Need a hand? »
-propose « Ask for a hint (+30 s) » ; l'équipe confirme, l'indice s'affiche
+propose « Ask for a hint (+3 min) » ; l'équipe confirme, l'indice s'affiche
 sur un carton vert-de-gris et reste visible jusqu'à la résolution de la
-salle. Chaque indice ajoute `CONFIG.hintPenaltySeconds` (30 s) au chrono,
+salle. Chaque indice ajoute `CONFIG.hintPenaltySeconds` (180 s) au chrono,
 immédiatement et de façon visible (le chrono s'éclaire en bordeaux), donc au
 temps final et au code de résultat. Le nombre d'indices demandés par salle
 est mémorisé dans `chateau.progress` (`hints`) et survit à un
 rafraîchissement ; l'écran de résultat rappelle la pénalité totale. Une salle
 sans `hints` n'affiche pas le bloc. Textes dans `UI.hint*` et
-`UI.hintsSummary*`.
+`UI.hintsSummary*` ; la durée y est mise en forme par `formatPenalty`
+(« 3 minutes » en toutes lettres, « 3 min » dans les boutons).
 
 ### Blason d'équipe
 
